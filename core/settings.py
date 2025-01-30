@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     
     
     # Local apps
+    "accounts"
     
         
 ]
@@ -213,3 +214,11 @@ SWAGGER_SETTINGS = {
     'REFETCH_SCHEMA_WITH_AUTH': True,
     'REFETCH_SCHEMA_ON_LOGOUT': True,
 }
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'  # or your SMTP server
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'szgaming42@gmail.com'
+EMAIL_HOST_PASSWORD = "gmdp qqvn njsc gcmp"
+DEFAULT_FROM_EMAIL = 'szgaming42@gmail.com'

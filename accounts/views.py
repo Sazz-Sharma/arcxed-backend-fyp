@@ -16,6 +16,8 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from django.core.mail import send_mail
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
+from .models import OTPVerification
 
 load_dotenv()
 
@@ -79,25 +81,149 @@ class UserDetailView(APIView):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
     
-    
-class RegisterView(APIView):
+
+# class RegisterView(APIView):
+#     @swagger_auto_schema(
+#         operation_description="Register a new user",
+#         request_body=RegisterSerializer,
+#         responses={
+#             201: UserSerializer,
+#             400: "Bad Request"
+#         }
+#     )
+#     def post(self, request):
+#         serializer = RegisterSerializer(data=request.data)
+#         if serializer.is_valid():
+#             user = serializer.save()
+#             return Response({
+#                 "user": UserSerializer(user).data,
+#                 "message": "User Created Successfully"
+#             }, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+class InitiateRegistrationView(APIView):
     @swagger_auto_schema(
-        operation_description="Register a new user",
-        request_body=RegisterSerializer,
+        operation_description="Step 1: Initiate user registration and send OTP",
+        request_body=InitiateRegistrationSerializer,
         responses={
-            201: UserSerializer,
-            400: "Bad Request"
+            200: "OTP sent successfully",
+            400: "Bad request"
         }
     )
     def post(self, request):
-        serializer = RegisterSerializer(data=request.data)
+        serializer = InitiateRegistrationSerializer(data=request.data)
         if serializer.is_valid():
-            user = serializer.save()
+            email = serializer.validated_data['email']
+            
+            # Check if user already exists
+            if User.objects.filter(email=email).exists():
+                return Response(
+                    {'error': 'User already exists'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Create or update OTP
+            otp_obj, _ = OTPVerification.objects.update_or_create(
+                email=email,
+                defaults={
+                    'is_verified': False,
+                    'otp': None,  # Will be generated in save()
+                    'expires_at': None  # Will be set in save()
+                }
+            )
+
+            # Send OTP email
+            send_mail(
+                'Your Registration OTP',
+                f'Your OTP for registration is: {otp_obj.otp}. Valid for 10 minutes.',
+                settings.DEFAULT_FROM_EMAIL,
+                [email],
+                fail_silently=False,
+            )
+
+            # Store registration data in session
+            request.session['registration_data'] = serializer.validated_data
+            request.session.set_expiry(600)  # 10 minutes
+
             return Response({
-                "user": UserSerializer(user).data,
-                "message": "User Created Successfully"
-            }, status=status.HTTP_201_CREATED)
+                'message': 'OTP sent successfully. Please verify within 10 minutes.',
+                'email': email
+            })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class VerifyOTPAndRegisterView(APIView):
+    @swagger_auto_schema(
+        operation_description="Step 2: Verify OTP and complete registration",
+        request_body=VerifyOTPSerializer,
+        responses={
+            201: UserSerializer,
+            400: "Bad request",
+            404: "OTP verification not found"
+        }
+    )
+    def post(self, request):
+        serializer = VerifyOTPSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            otp = serializer.validated_data['otp']
+
+            try:
+                otp_obj = OTPVerification.objects.get(email=email)
+                
+                # Check if OTP is expired
+                if otp_obj.is_expired:
+                    return Response(
+                        {'error': 'OTP has expired'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                # Verify OTP
+                if otp_obj.otp != otp:
+                    return Response(
+                        {'error': 'Invalid OTP'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                # Get registration data from session
+                registration_data = request.session.get('registration_data')
+                if not registration_data:
+                    return Response(
+                        {'error': 'Registration session expired'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+
+                # Create user
+                user = User.objects.create_user(
+                    email=email,
+                    password=registration_data['password'],
+                    first_name=registration_data['first_name'],
+                    last_name=registration_data['last_name']
+                )
+
+                # Mark OTP as verified
+                otp_obj.is_verified = True
+                otp_obj.save()
+
+                # Clear session
+                del request.session['registration_data']
+
+                return Response({
+                    'message': 'Registration completed successfully',
+                    'user': UserSerializer(user).data
+                }, status=status.HTTP_201_CREATED)
+
+            except ObjectDoesNotExist:
+                return Response(
+                    {'error': 'OTP verification not found'}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class UserDetailView(APIView):
     permission_classes = [IsAuthenticated]

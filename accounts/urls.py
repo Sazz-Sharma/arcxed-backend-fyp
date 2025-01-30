@@ -31,7 +31,8 @@ urlpatterns = [
     
     #User-Management
     
-       path('auth/register/', RegisterView.as_view(), name='register'),
+    path('auth/register/initiate/', InitiateRegistrationView.as_view(), name='register_initiate'),
+    path('auth/register/verify/', VerifyOTPAndRegisterView.as_view(), name='register_verify'),
     path('auth/user/', UserDetailView.as_view(), name='user_detail'),
     path('auth/user/update/', UpdateUserView.as_view(), name='user_update'),
     path('auth/user/change-password/', ChangePasswordView.as_view(), name='change_password'),
