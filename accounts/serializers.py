@@ -1,14 +1,15 @@
 from rest_framework import serializers
-from django.contrib.auth import get_user_model
+# from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from .models import User
 
-User = get_user_model()
+# User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'email', 'first_name', 'last_name', 'is_active')
-        read_only_fields = ('email', 'is_active')
+        fields = ('id', 'email', 'username', 'is_active')
+        # read_only_fields = ('email', 'is_active')
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password])
@@ -45,10 +46,10 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     
 class InitiateRegistrationSerializer(serializers.Serializer):
     email = serializers.EmailField()
+    username = serializers.CharField(max_length=150)
     password = serializers.CharField(write_only=True)
     password2 = serializers.CharField(write_only=True)
-    first_name = serializers.CharField()
-    last_name = serializers.CharField()
+    
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:

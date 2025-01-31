@@ -56,7 +56,7 @@ INSTALLED_APPS = [
     
     
     # Local apps
-    "accounts"
+    "accounts",
     
         
 ]
@@ -222,3 +222,9 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'szgaming42@gmail.com'
 EMAIL_HOST_PASSWORD = "gmdp qqvn njsc gcmp"
 DEFAULT_FROM_EMAIL = 'szgaming42@gmail.com'
+
+AUTH_USER_MODEL = "accounts.User"
+ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+

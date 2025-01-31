@@ -17,7 +17,7 @@ from drf_yasg import openapi
 from django.core.mail import send_mail
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from .models import OTPVerification
+from .models import OTPVerification, User
 
 load_dotenv()
 
@@ -52,8 +52,6 @@ class GoogleLoginView(APIView):
                 requests.Request(),
                 os.getenv('GOOGLE_CLIENT_ID'),
             )
-
-            User = get_user_model()
             
             # Check if user exists
             user, created = User.objects.get_or_create(
@@ -108,31 +106,23 @@ class InitiateRegistrationView(APIView):
     @swagger_auto_schema(
         operation_description="Step 1: Initiate user registration and send OTP",
         request_body=InitiateRegistrationSerializer,
-        responses={
-            200: "OTP sent successfully",
-            400: "Bad request"
-        }
+        responses={200: "OTP sent successfully", 400: "Bad request"}
     )
     def post(self, request):
         serializer = InitiateRegistrationSerializer(data=request.data)
         if serializer.is_valid():
             email = serializer.validated_data['email']
-            
+            username = serializer.validated_data['username']
+            password = serializer.validated_data['password']
+
             # Check if user already exists
             if User.objects.filter(email=email).exists():
-                return Response(
-                    {'error': 'User already exists'}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                return Response({'error': 'User already exists'}, status=status.HTTP_400_BAD_REQUEST)
 
             # Create or update OTP
             otp_obj, _ = OTPVerification.objects.update_or_create(
                 email=email,
-                defaults={
-                    'is_verified': False,
-                    'otp': None,  # Will be generated in save()
-                    'expires_at': None  # Will be set in save()
-                }
+                defaults={'is_verified': False, 'otp': None, 'expires_at': None}
             )
 
             # Send OTP email
@@ -145,24 +135,23 @@ class InitiateRegistrationView(APIView):
             )
 
             # Store registration data in session
-            request.session['registration_data'] = serializer.validated_data
+            request.session['registration_data'] = {
+                'email': email,
+                'username': username,
+                'password': password
+            }
             request.session.set_expiry(600)  # 10 minutes
 
-            return Response({
-                'message': 'OTP sent successfully. Please verify within 10 minutes.',
-                'email': email
-            })
+            return Response({'message': 'OTP sent successfully. Please verify within 10 minutes.', 'email': email})
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class VerifyOTPAndRegisterView(APIView):
     @swagger_auto_schema(
         operation_description="Step 2: Verify OTP and complete registration",
         request_body=VerifyOTPSerializer,
-        responses={
-            201: UserSerializer,
-            400: "Bad request",
-            404: "OTP verification not found"
-        }
+        responses={201: UserSerializer, 400: "Bad request", 404: "OTP verification not found"}
     )
     def post(self, request):
         serializer = VerifyOTPSerializer(data=request.data)
@@ -173,56 +162,36 @@ class VerifyOTPAndRegisterView(APIView):
             try:
                 otp_obj = OTPVerification.objects.get(email=email)
                 
-                # Check if OTP is expired
                 if otp_obj.is_expired:
-                    return Response(
-                        {'error': 'OTP has expired'}, 
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                    return Response({'error': 'OTP has expired'}, status=status.HTTP_400_BAD_REQUEST)
 
-                # Verify OTP
                 if otp_obj.otp != otp:
-                    return Response(
-                        {'error': 'Invalid OTP'}, 
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                    return Response({'error': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
 
                 # Get registration data from session
                 registration_data = request.session.get('registration_data')
                 if not registration_data:
-                    return Response(
-                        {'error': 'Registration session expired'}, 
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-                
+                    return Response({'error': 'Registration session expired'}, status=status.HTTP_400_BAD_REQUEST)
 
-                # Create user
+                # Create user without username_slug (set later)
                 user = User.objects.create_user(
                     email=email,
-                    password=registration_data['password'],
-                    first_name=registration_data['first_name'],
-                    last_name=registration_data['last_name']
+                    username=registration_data['username'],
+                    password=registration_data['password']
                 )
 
-                # Mark OTP as verified
                 otp_obj.is_verified = True
                 otp_obj.save()
 
-                # Clear session
                 del request.session['registration_data']
 
-                return Response({
-                    'message': 'Registration completed successfully',
-                    'user': UserSerializer(user).data
-                }, status=status.HTTP_201_CREATED)
+                return Response({'message': 'Registration completed successfully', 'user': UserSerializer(user).data}, status=status.HTTP_201_CREATED)
 
             except ObjectDoesNotExist:
-                return Response(
-                    {'error': 'OTP verification not found'}, 
-                    status=status.HTTP_404_NOT_FOUND
-                )
+                return Response({'error': 'OTP verification not found'}, status=status.HTTP_404_NOT_FOUND)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 class UserDetailView(APIView):
