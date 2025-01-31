@@ -9,29 +9,42 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'email', 'username', 'is_active')
-        # read_only_fields = ('email', 'is_active')
-
-class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, validators=[validate_password])
-    password2 = serializers.CharField(write_only=True)
-
+        
+        
+class UserDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('email', 'password', 'password2', 'first_name', 'last_name')
+        fields = ('id', 'email','username','username_slug', 'is_active', 'date_joined')
+        read_only_fields = ('id','email', 'is_active', 'date_joined')
+        
+    def validate_username_slug(self, value):
+        request_user = self.instance
+        if request_user.username_slug != value:  # Only validate if changing
+            if User.objects.filter(username_slug=value).exists():
+                raise serializers.ValidationError("This username_slug is already taken.")
+        return value
 
-    def validate(self, attrs):
-        if attrs['password'] != attrs['password2']:
-            raise serializers.ValidationError({"password": "Passwords don't match"})
-        return attrs
+# class RegisterSerializer(serializers.ModelSerializer):
+#     password = serializers.CharField(write_only=True, validators=[validate_password])
+#     password2 = serializers.CharField(write_only=True)
 
-    def create(self, validated_data):
-        validated_data.pop('password2')
-        # print(**validated_data)
-        try:
-            user = User.objects.create_user(**validated_data)
-        except:
-            raise serializers.ValidationError({"error": "Email is already in use"})
-        return user
+#     class Meta:
+#         model = User
+#         fields = ('email', 'password', 'password2', 'first_name', 'last_name')
+
+#     def validate(self, attrs):
+#         if attrs['password'] != attrs['password2']:
+#             raise serializers.ValidationError({"password": "Passwords don't match"})
+#         return attrs
+
+#     def create(self, validated_data):
+#         validated_data.pop('password2')
+#         # print(**validated_data)
+#         try:
+#             user = User.objects.create_user(**validated_data)
+#         except:
+#             raise serializers.ValidationError({"error": "Email is already in use"})
+#         return user
 
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)

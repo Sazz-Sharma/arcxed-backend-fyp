@@ -72,13 +72,6 @@ class GoogleLoginView(APIView):
         except ValueError:
             return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
 
-class UserDetailView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        serializer = UserSerializer(request.user)
-        return Response(serializer.data)
-    
 
 # class RegisterView(APIView):
 #     @swagger_auto_schema(
@@ -199,20 +192,20 @@ class UserDetailView(APIView):
     @swagger_auto_schema(
         operation_description="Get current user details",
         responses={
-            200: UserSerializer,
+            200: UserDetailSerializer,
             401: "Unauthorized"
         },
         security=[{'Bearer': []}]
     )
     def get(self, request):
-        serializer = UserSerializer(request.user)
+        serializer = UserDetailSerializer(request.user)
         return Response(serializer.data)
 
 class UpdateUserView(APIView):
     permission_classes = [IsAuthenticated]
     @swagger_auto_schema(
         operation_description="Update user profile",
-        request_body=UserSerializer,
+        request_body=UserDetailSerializer,
         responses={
             200: UserSerializer,
             400: "Bad Request",
@@ -221,7 +214,7 @@ class UpdateUserView(APIView):
         security=[{'Bearer': []}]
     )
     def put(self, request):
-        serializer = UserSerializer(request.user, data=request.data, partial=True)
+        serializer = UserDetailSerializer(request.user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)

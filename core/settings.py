@@ -130,8 +130,7 @@ SIMPLE_JWT = {
     'USER_ID_CLAIM': 'user_id',
     
     'AUTH_TOKEN_CLASSES': (
-        'rest_framework_simplejwt.tokens.AccessToken',
-        'location.to.custom.token.CustomJWTToken'    # This is optional - custom class where token could be manipulated e.g. enriched with tenants, UUIDs etc.
+        'rest_framework_simplejwt.tokens.AccessToken',   # This is optional - custom class where token could be manipulated e.g. enriched with tenants, UUIDs etc.
         ),
     
 }
