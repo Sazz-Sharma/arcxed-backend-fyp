@@ -22,55 +22,45 @@ from .models import OTPVerification, User
 load_dotenv()
 
 class GoogleLoginView(APIView):
-    @swagger_auto_schema(
-        operation_description="Google OAuth login endpoint",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'token': openapi.Schema(type=openapi.TYPE_STRING, description='Google OAuth token')
-            },
-            required=['token']
-        ),
-        responses={
-            200: openapi.Response(
-                description="Successful login",
-                schema=openapi.Schema(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        'access': openapi.Schema(type=openapi.TYPE_STRING),
-                        'refresh': openapi.Schema(type=openapi.TYPE_STRING),
-                    }
-                )
-            ),
-            400: "Invalid token"
-        }
-    )
     def post(self, request):
+        code = request.data.get('code')
+        if not code:
+            return Response({'error': 'Authorization code is required'}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            idinfo = id_token.verify_oauth2_token(
-                request.data.get('token'),
-                requests.Request(),
-                os.getenv('GOOGLE_CLIENT_ID'),
-            )
-            
-            # Check if user exists
-            user, created = User.objects.get_or_create(
-                email=idinfo['email'],
-                defaults={
-                    'first_name': idinfo.get('given_name', ''),
-                    'last_name': idinfo.get('family_name', ''),
+            # Exchange code for tokens
+            token_response = requests.post(
+                'https://oauth2.googleapis.com/token',
+                data={
+                    'code': code,
+                    'client_id': os.getenv('GOOGLE_CLIENT_ID'),
+                    'client_secret': os.getenv('GOOGLE_CLIENT_SECRET'),
+                    'redirect_uri': 'http://localhost:3000/auth/google/callback',
+                    'grant_type': 'authorization_code',
                 }
             )
+            token_data = token_response.json()
+            idinfo = id_token.verify_oauth2_token(token_data['id_token'], requests.Request(), os.getenv('GOOGLE_CLIENT_ID'))
 
-            # Generate JWT tokens
+            # Proceed with user creation/login
+            email = idinfo['email']
+            given_name = idinfo.get('given_name', '')
+            family_name = idinfo.get('family_name', '')
+            username = f"{given_name} {family_name}".strip()
+
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults={'username': username}
+            )
+
             refresh = RefreshToken.for_user(user)
-
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
             })
-        except ValueError:
-            return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # class RegisterView(APIView):
@@ -316,4 +306,41 @@ class PasswordResetConfirmView(APIView):
             # Verify token and reset password
             return Response({'message': 'Password reset successfully'})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+
+# Onboarding view
+
+# class OnboardingView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     @swagger_auto_schema(
+#         operation_description="Complete user onboarding",
+#         request_body=openapi.Schema(
+#             type=openapi.TYPE_OBJECT,
+#             properties={
+#                 'username_slug': openapi.Schema(type=openapi.TYPE_STRING, description='Unique username slug')
+#             },
+#             required=['username_slug']
+#         ),
+#         responses={
+#             200: "Onboarding completed successfully",
+#             400: "Bad request"
+#         }
+#     )
+#     def post(self, request):
+#         username_slug = request.data.get('username_slug')
+#         if not username_slug:
+#             return Response({'error': 'username_slug is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+#         # Check if the username_slug is unique
+#         if User.objects.filter(username_slug=username_slug).exists():
+#             return Response({'error': 'username_slug already exists'}, status=status.HTTP_400_BAD_REQUEST)
+
+#         # Update the user's username_slug
+#         user = request.user
+#         user.username_slug = username_slug
+#         user.save(update_fields=['username_slug'])
+
+#         return Response({'message': 'Onboarding completed successfully', 'user': UserDetailSerializer(user).data})
     
