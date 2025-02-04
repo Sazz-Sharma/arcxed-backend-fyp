@@ -1,6 +1,5 @@
 from django.shortcuts import render
 
-# Create your views here.
 from rest_framework import viewsets
 from .models import Subjects, Streams, Chapters
 from .serializers import SubjectsSerializer, StreamsSerializer, ChaptersSerializer
@@ -43,3 +42,4 @@ class ChaptersViewSet(viewsets.ModelViewSet):
     )
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
+    

@@ -11,3 +11,13 @@ class Streams(models.Model):
 class Chapters(models.Model):
     sub_id = models.ForeignKey(Subjects, on_delete=models.PROTECT)
     chapter_name = models.CharField(max_length = 100, blank=False, null=False)
+
+class Topics(models.Model):
+    topic_name = models.CharField(max_length=100, null = False)
+    chapter = models.ForeignKey(Chapters, null=False, on_delete=models.CASCADE)
+    
+
+class Questions(models.Model):
+    question = models.TextField()
+
+
