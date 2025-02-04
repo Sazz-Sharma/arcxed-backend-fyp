@@ -3,14 +3,11 @@ from django.db import models
 # Create your models here.
 
 class Subjects(models.Model):
-    subject_name = models.TextField(unique=True)
+    subject_name = models.CharField(max_length=100, unique=True)
     
 class Streams(models.Model):
-    stream_name = models.TextField(unique=True)
+    stream_name = models.CharField(max_length=100,unique=True)
 
 class Chapters(models.Model):
     sub_id = models.ForeignKey(Subjects, on_delete=models.PROTECT)
-    chapter_name = models.TextField(blank=False, null=False)
-    
-
-
+    chapter_name = models.CharField(max_length = 100, blank=False, null=False)

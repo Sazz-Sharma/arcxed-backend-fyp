@@ -12,7 +12,7 @@ from drf_yasg import openapi
 
 schema_view = get_schema_view(
     openapi.Info(
-        title="Your API",
+        title="User Account API",
         default_version='v1',
         description="Your API description",
         terms_of_service="https://www.yourapp.com/terms/",
@@ -56,3 +56,4 @@ urlpatterns = [
          schema_view.with_ui('redoc', cache_timeout=0), 
          name='schema-redoc'),
 ]
+
