@@ -72,3 +72,7 @@ class InitiateRegistrationSerializer(serializers.Serializer):
 class VerifyOTPSerializer(serializers.Serializer):
     email = serializers.EmailField()
     otp = serializers.CharField(min_length=6, max_length=6)
+    
+class GoogleAuthSerializer(serializers.Serializer):
+    code = serializers.CharField(required=True, help_text="Google OAuth2 authorization code")
+

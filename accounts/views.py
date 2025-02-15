@@ -1,5 +1,5 @@
 from django.shortcuts import render
-
+from urllib.parse import urlencode
 # Create your views here.
 from rest_framework import status
 from rest_framework.views import APIView
@@ -22,11 +22,32 @@ from .models import OTPVerification, User
 load_dotenv()
 
 class GoogleLoginView(APIView):
+    
+    def get(self, request):
+        # Generate Google OAuth2 authorization URL
+        params = {
+            'response_type': 'code',
+            'client_id': os.getenv('GOOGLE_CLIENT_ID'),
+            'redirect_uri': 'http://localhost:3000/auth/google/callback',
+            'scope': 'openid email profile',
+            'access_type': 'offline',
+        }
+        authorization_url = f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}"
+        return Response({'authorization_url': authorization_url})
+    
+    @swagger_auto_schema(
+        request_body=GoogleAuthSerializer,
+        responses={200: openapi.Response("Access and refresh tokens")},
+    )
     def post(self, request):
-        code = request.data.get('code')
-        if not code:
-            return Response({'error': 'Authorization code is required'}, status=status.HTTP_400_BAD_REQUEST)
+        # code = request.data.get('code')
+        # if not code:
+        #     return Response({'error': 'Authorization code is required'}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = GoogleAuthSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        code = serializer.validated_data['code']
         try:
             # Exchange code for tokens
             token_response = requests.post(
