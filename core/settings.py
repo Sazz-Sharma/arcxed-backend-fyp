@@ -187,6 +187,12 @@ USE_TZ = True
 
 CORS_ORIGIN_ALLOW_ALL = True
 
+CORS_ALLOW_HEADERS = [
+    'authorization',
+    'content-type',
+    # Add any other headers your request might be using
+]
+CORS_ALLOW_CREDENTIALS = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
