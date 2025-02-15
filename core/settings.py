@@ -143,6 +143,7 @@ SOCIALACCOUNT_PROVIDERS = {
             'key': ''
         },
         'SCOPE': [
+            'openid',
             'profile',
             'email',
         ],

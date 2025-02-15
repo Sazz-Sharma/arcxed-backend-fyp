@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from google.oauth2 import id_token
-from google.auth.transport import requests
+from google.auth.transport import requests as google_requests
 from .serializers import *
 import os
 from dotenv import load_dotenv
@@ -18,6 +18,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from .models import OTPVerification, User
+import requests 
 
 load_dotenv()
 
@@ -29,7 +30,7 @@ class GoogleLoginView(APIView):
             'response_type': 'code',
             'client_id': os.getenv('GOOGLE_CLIENT_ID'),
             'redirect_uri': 'http://localhost:3000/auth/google/callback',
-            'scope': 'openid email profile',
+            'scope': 'email profile',
             'access_type': 'offline',
         }
         authorization_url = f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}"
@@ -61,7 +62,8 @@ class GoogleLoginView(APIView):
                 }
             )
             token_data = token_response.json()
-            idinfo = id_token.verify_oauth2_token(token_data['id_token'], requests.Request(), os.getenv('GOOGLE_CLIENT_ID'))
+            print(token_data)
+            idinfo = id_token.verify_oauth2_token(token_data['id_token'], google_requests.Request(), os.getenv('GOOGLE_CLIENT_ID'))
 
             # Proceed with user creation/login
             email = idinfo['email']
