@@ -43,3 +43,33 @@ class HeroQuestionsWithoutAnswerSerializer(serializers.ModelSerializer):
     class Meta:
         model = HeroQuestions
         exclude = ('answer',)
+
+
+class ChapterRequestSerializer(serializers.Serializer):
+    chapter_id = serializers.IntegerField(min_value=1, required=True)
+    num_questions = serializers.IntegerField(min_value=1, required=True)
+
+class SubjectRequestSerializer(serializers.Serializer):
+    subject_id = serializers.IntegerField(min_value=1, required=True)
+    chapters = serializers.ListField(
+        child=ChapterRequestSerializer(),
+        required=True
+    )
+
+class CustomTestSerializer(serializers.Serializer):
+    subjects = serializers.ListField(
+        child=SubjectRequestSerializer(),
+        required=True
+    )
+    time_minutes = serializers.IntegerField(min_value=1, required=True)
+    
+    
+class TestAnswerSerializer(serializers.Serializer):
+    question_id = serializers.IntegerField(required=True)
+    user_answer = serializers.CharField(required=True)
+
+class TestResultSerializer(serializers.Serializer):
+    answers = serializers.ListField(
+        child=TestAnswerSerializer(),
+        required=True
+    )

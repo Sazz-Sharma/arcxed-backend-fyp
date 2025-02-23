@@ -190,7 +190,6 @@ CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_HEADERS = [
     'authorization',
     'content-type',
-    # Add any other headers your request might be using
 ]
 CORS_ALLOW_CREDENTIALS = True
 
@@ -217,8 +216,8 @@ SWAGGER_SETTINGS = {
     },
     'USE_SESSION_AUTH': False,
     'PERSIST_AUTH': True,
-    'REFETCH_SCHEMA_WITH_AUTH': True,
-    'REFETCH_SCHEMA_ON_LOGOUT': True,
+    # 'REFETCH_SCHEMA_WITH_AUTH': True,
+    # 'REFETCH_SCHEMA_ON_LOGOUT': True,
 }
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

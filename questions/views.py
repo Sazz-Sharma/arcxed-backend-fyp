@@ -1,6 +1,6 @@
 from django.shortcuts import render
 
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from .models import *
 from .serializers import *
 from rest_framework.permissions import IsAuthenticated
@@ -10,6 +10,7 @@ from drf_yasg import openapi
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
 
 class SubjectsViewSet(viewsets.ModelViewSet):
     queryset = Subjects.objects.all()
@@ -144,3 +145,172 @@ def generate_mock_test(request):
     
     serializer = HeroQuestionsWithoutAnswerSerializer(selected_questions, many=True)
     return Response(serializer.data)
+
+@swagger_auto_schema(
+    method='post',
+    request_body=CustomTestSerializer,
+    responses={
+        200: openapi.Response(
+            description="Custom test generated successfully",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'test_details': openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        properties={
+                            'total_questions': openapi.Schema(type=openapi.TYPE_INTEGER),
+                            'total_marks': openapi.Schema(type=openapi.TYPE_INTEGER),
+                            'time_minutes': openapi.Schema(type=openapi.TYPE_INTEGER),
+                            'subjects_covered': openapi.Schema(
+                                type=openapi.TYPE_ARRAY,
+                                items=openapi.Schema(type=openapi.TYPE_INTEGER)
+                            )
+                        }
+                    ),
+                    'questions': openapi.Schema(
+                        type=openapi.TYPE_ARRAY,
+                        items=openapi.Schema(type=openapi.TYPE_OBJECT)
+                    )
+                }
+            )
+        ),
+        400: "Invalid input data",
+        404: "Subject or chapter not found"
+    },
+    operation_description="Generate a custom test based on user-selected subjects, chapters, and number of questions.",
+    operation_summary="Create Custom Test"
+)
+@api_view(['POST'])
+def create_custom_test(request):
+    '''
+    Payload:
+                {
+            "subjects": [
+                {
+                "subject_id": 1,
+                "chapters": [
+                    {
+                    "chapter_id": 1,
+                    "num_questions": 5
+                    }
+                ]
+                }
+            ],
+            "time_minutes": 30
+            }
+    '''
+    serializer = CustomTestSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    data = serializer.validated_data
+    selected_questions = []
+    total_marks = 0
+    stream = get_object_or_404(Streams, stream_name='IOE')  # Or make this configurable
+
+    for subject_data in data['subjects']:
+        subject = get_object_or_404(Subjects, id=subject_data['subject_id'])
+        
+        for chapter_data in subject_data['chapters']:
+            chapter = get_object_or_404(Chapters, id=chapter_data['chapter_id'], sub_id=subject)
+            topics = Topics.objects.filter(chapter=chapter)
+            
+            # Get random questions
+            questions = HeroQuestions.objects.filter(
+                topic__in=topics,
+                stream=stream
+            ).order_by('?')[:chapter_data['num_questions']]
+            
+            if len(questions) < chapter_data['num_questions']:
+                return Response({
+                    'error': f'Not enough questions for {subject.subject_name} - {chapter.chapter_name}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            selected_questions.extend(questions)
+            total_marks += sum(q.marks for q in questions)
+
+    serializer = HeroQuestionsWithoutAnswerSerializer(selected_questions, many=True)
+    
+    return Response({
+        'test_details': {
+            'total_questions': len(selected_questions),
+            'total_marks': total_marks,
+            'time_minutes': data['time_minutes'],
+            'subjects_covered': [s['subject_id'] for s in data['subjects']]
+        },
+        'questions': serializer.data
+    })
+    
+    
+
+from django.db.models import Q
+
+@swagger_auto_schema(
+    method='post',
+    request_body=TestResultSerializer,
+    responses={
+        200: "Test results calculated successfully",
+        400: "Invalid input data"
+    },
+    operation_description="Check test results and calculate scores",
+    operation_summary="Check Test Results"
+)
+@api_view(['POST'])
+def check_test_result(request):
+    serializer = TestResultSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Get all question IDs from the request
+    question_ids = [ans['question_id'] for ans in serializer.validated_data['answers']]
+    
+    # Fetch all relevant questions with answers
+    questions = HeroQuestions.objects.filter(
+        Q(question__id__in=question_ids)).select_related('question').only('id', 'marks', 'question__answer')
+    
+    
+    # Create a mapping of question ID to correct answer and marks
+    correct_answers = {
+        q.question.id: {
+            'correct_answer': q.question.answer,
+            'marks': q.marks
+        } for q in questions
+    }
+    
+    # Calculate results
+    total_score = 0
+    results = []
+    
+    for answer in serializer.validated_data['answers']:
+        q_id = answer['question_id']
+        user_answer = answer['user_answer']
+        
+        if q_id not in correct_answers:
+            results.append({
+                'question_id': q_id,
+                'error': 'Question not found',
+                'is_correct': False,
+                'marks_obtained': 0
+            })
+            continue
+            
+        correct = correct_answers[q_id]
+        is_correct = user_answer.strip().lower() == correct['correct_answer'].strip().lower()
+        
+        if is_correct:
+            total_score += correct['marks']
+        
+        results.append({
+            'question_id': q_id,
+            'user_answer': user_answer,
+            'correct_answer': correct['correct_answer'],
+            'is_correct': is_correct,
+            'marks_obtained': correct['marks'] if is_correct else 0
+        })
+    
+    return Response({
+        'total_score': total_score,
+        'total_questions': len(results),
+        'correct_answers': sum(1 for r in results if r['is_correct']),
+        'detailed_results': results
+    })
