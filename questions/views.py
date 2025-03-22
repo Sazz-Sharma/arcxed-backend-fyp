@@ -11,6 +11,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
+from rest_framework.views import APIView
 
 class SubjectsViewSet(viewsets.ModelViewSet):
     queryset = Subjects.objects.all()
@@ -142,9 +143,32 @@ def generate_mock_test(request):
                     stream=stream
                 ).order_by('?')[:num_mark2]
                 selected_questions.extend(questions)
+    generated_test_paper = GeneratedTestPaper.objects.create(
+        stream=stream,
+        total_marks=sum(q.marks for q in selected_questions),
+        total_questions=len(selected_questions),
+        created_by=request.user, 
+        test_type='mock', 
+        subjects_included=[s.id for s in Subjects.objects.all()]
+          )
     
-    serializer = HeroQuestionsWithoutAnswerSerializer(selected_questions, many=True)
-    return Response(serializer.data)
+    for question in selected_questions:
+        TestQuestionLink.objects.create(
+            test_id=generated_test_paper,
+            question_id=question
+        )
+        
+    # generated_test_paper.questions.set(selected_questions)
+
+    question_serializer = HeroQuestionsWithoutAnswerSerializer(selected_questions, many=True)
+    # return Response(serializer.data)
+    
+    test_paper_serializer = GeneratedTestPaperSerializer(generated_test_paper)
+    
+    return Response({
+        'test_details': test_paper_serializer.data,
+        'questions': question_serializer.data
+    })
 
 @swagger_auto_schema(
     method='post',
@@ -243,74 +267,129 @@ def create_custom_test(request):
     
     
 
-from django.db.models import Q
+# from django.db.models import Q
 
-@swagger_auto_schema(
-    method='post',
-    request_body=TestResultSerializer,
-    responses={
-        200: "Test results calculated successfully",
-        400: "Invalid input data"
-    },
-    operation_description="Check test results and calculate scores",
-    operation_summary="Check Test Results"
-)
-@api_view(['POST'])
-def check_test_result(request):
-    serializer = TestResultSerializer(data=request.data)
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# @swagger_auto_schema(
+#     method='post',
+#     request_body=TestResultSerializer,
+#     responses={
+#         200: "Test results calculated successfully",
+#         400: "Invalid input data"
+#     },
+#     operation_description="Check test results and calculate scores",
+#     operation_summary="Check Test Results"
+# )
+# @api_view(['POST'])
+# def check_test_result(request):
+#     serializer = TestResultSerializer(data=request.data)
+#     if not serializer.is_valid():
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    # Get all question IDs from the request
-    question_ids = [ans['question_id'] for ans in serializer.validated_data['answers']]
+#     # Get all question IDs from the request
+#     question_ids = [ans['question_id'] for ans in serializer.validated_data['answers']]
     
-    # Fetch all relevant questions with answers
-    questions = HeroQuestions.objects.filter(
-        Q(question__id__in=question_ids)).select_related('question').only('id', 'marks', 'question__answer')
+#     # Fetch all relevant questions with answers
+#     questions = HeroQuestions.objects.filter(
+#         Q(question__id__in=question_ids)).select_related('question').only('id', 'marks', 'question__answer')
     
     
-    # Create a mapping of question ID to correct answer and marks
-    correct_answers = {
-        q.question.id: {
-            'correct_answer': q.question.answer,
-            'marks': q.marks
-        } for q in questions
-    }
+#     # Create a mapping of question ID to correct answer and marks
+#     correct_answers = {
+#         q.question.id: {
+#             'correct_answer': q.question.answer,
+#             'marks': q.marks
+#         } for q in questions
+#     }
     
-    # Calculate results
-    total_score = 0
-    results = []
+#     # Calculate results
+#     total_score = 0
+#     results = []
     
-    for answer in serializer.validated_data['answers']:
-        q_id = answer['question_id']
-        user_answer = answer['user_answer']
+#     for answer in serializer.validated_data['answers']:
+#         q_id = answer['question_id']
+#         user_answer = answer['user_answer']
         
-        if q_id not in correct_answers:
-            results.append({
-                'question_id': q_id,
-                'error': 'Question not found',
-                'is_correct': False,
-                'marks_obtained': 0
-            })
-            continue
+#         if q_id not in correct_answers:
+#             results.append({
+#                 'question_id': q_id,
+#                 'error': 'Question not found',
+#                 'is_correct': False,
+#                 'marks_obtained': 0
+#             })
+#             continue
             
-        correct = correct_answers[q_id]
-        is_correct = user_answer.strip().lower() == correct['correct_answer'].strip().lower()
+#         correct = correct_answers[q_id]
+#         is_correct = user_answer.strip().lower() == correct['correct_answer'].strip().lower()
         
-        if is_correct:
-            total_score += correct['marks']
+#         if is_correct:
+#             total_score += correct['marks']
         
-        results.append({
-            'question_id': q_id,
-            'user_answer': user_answer,
-            'correct_answer': correct['correct_answer'],
-            'is_correct': is_correct,
-            'marks_obtained': correct['marks'] if is_correct else 0
-        })
+#         results.append({
+#             'question_id': q_id,
+#             'user_answer': user_answer,
+#             'correct_answer': correct['correct_answer'],
+#             'is_correct': is_correct,
+#             'marks_obtained': correct['marks'] if is_correct else 0
+#         })
     
-    return Response({
-        'total_score': total_score,
-        'total_questions': len(results),
-        'correct_answers': sum(1 for r in results if r['is_correct']),
-        'detailed_results': results
-    })
+#     return Response({
+#         'total_score': total_score,
+#         'total_questions': len(results),
+#         'correct_answers': sum(1 for r in results if r['is_correct']),
+#         'detailed_results': results
+#     })
+
+
+
+class SubmitResultView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description="Submit user test results",
+        request_body=TestHistorySerializer,
+        responses={
+            201: openapi.Response(
+                description="Result submitted successfully",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'status': openapi.Schema(type=openapi.TYPE_STRING),
+                        'data': openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                'result_id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                'total_marks': openapi.Schema(type=openapi.TYPE_INTEGER),
+                                'obtained_marks': openapi.Schema(type=openapi.TYPE_INTEGER),
+                            }
+                        )
+                    }
+                )
+            ),
+            400: "Invalid input data"
+        },
+        operation_summary="Submit Test Result"
+    )
+    def post(self, request):
+        serializer = TestHistorySerializer(
+            data=request.data,
+            context={'request': request}
+        )
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'status': 'success',
+                'data': {
+                    'result_id': serializer.instance.id,
+                    'total_marks': serializer.instance.total_marks,
+                    'obtained_marks': serializer.instance.obtained_marks
+                }
+            }, status=status.HTTP_201_CREATED)
+        
+        return Response({
+            'status': 'error',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+        
+        
+

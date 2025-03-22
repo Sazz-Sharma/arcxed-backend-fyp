@@ -21,26 +21,78 @@ class Questions(models.Model):
     id = models.AutoField(primary_key=True)
     question = models.TextField()
     options = models.JSONField()
-    answer = models.TextField()
+    answer = models.JSONField()
 
 class HeroQuestions(models.Model):
     id = models.AutoField(primary_key=True)
     topic = models.ForeignKey(Topics, on_delete=models.CASCADE)
     question = models.ForeignKey(Questions, on_delete=models.CASCADE)
-    answer = models.JSONField()
     stream = models.ForeignKey(Streams, on_delete=models.CASCADE)
     marks = models.IntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    
+# def get_stream(stream_name):
+#     try:
+#         return Streams.objects.get(stream_name=stream_name)
+#     except Streams.DoesNotExist:
+#         raise ValueError(f"Stream {stream_name} is missing! Please create it manually.")
 
-class UserResult(models.Model):
+
+    
+class GeneratedTestPaper(models.Model):
+    id = models.AutoField(primary_key=True)
+    stream = models.ForeignKey(Streams, on_delete=models.CASCADE)
+    total_marks = models.IntegerField()
+    total_questions = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    TEST_TYPE_CHOICES = [
+        ('CUSTOM', 'custom'), 
+        ('MOCK', 'mock'), 
+    ]
+    test_type = models.CharField(max_length=6, choices=TEST_TYPE_CHOICES, default='custom')
+    subjects_included = models.JSONField(default=list)
+    
+    
+    def __str__(self): 
+        return self.stream + " " + self.created_at + " " + self.created_by
+    
+    def get_subjects(self):
+        return self.questions.values_list('topic__chapter__sub_id__subject_name', flat=True).distinct()
+
+    
+class TestQuestionLink(models.Model):
+    test_id = models.ForeignKey(GeneratedTestPaper, on_delete=models.CASCADE)
+    question_id = models.ForeignKey(HeroQuestions, on_delete=models.CASCADE)
+    
+    def __str__(self):
+        return self.test_id + " " + self.question_id
+    
+class TestHistory(models.Model):
+    TEST_TYPE_CHOICES = [
+        ('CUSTOM', 'custom'), 
+        ('MOCK', 'mock'), 
+    ]
     id = models.AutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    total_marks = models.IntegerField()
-    obtained_marks = models.IntegerField()
+    total_marks = models.IntegerField(default=0)
+    obtained_marks = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    time = models.IntegerField(default=0)
+    test_type = models.CharField(max_length=6, choices=TEST_TYPE_CHOICES, default='custom')
+    stream = models.ForeignKey(Streams, on_delete=models.CASCADE, null = True)
+    subjects_included = models.JSONField(default=list)
+
+
+class ResultQuestionLink(models.Model):
+    result_id = models.ForeignKey(TestHistory, on_delete=models.CASCADE)
+    question_id = models.ForeignKey(Questions, on_delete=models.CASCADE)
+    user_answer = models.TextField()
+    is_correct = models.BooleanField()
+    
     
 
 

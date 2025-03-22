@@ -76,14 +76,13 @@ def create_mock_data():
                 question = Questions.objects.create(
                     question=f"{sub['name']} {chap['name']} 1-mark Q{i}",
                     options=["Option A", "Option B", "Option C", "Option D"],
-                    answer="Option A"
+                    answer={"correct": "Option A"}
                 )
                 
                 # Create Hero Question
                 HeroQuestions.objects.create(
                     topic=topic,
                     question=question,
-                    answer={"correct": "Option A"},
                     stream=stream,
                     marks=1
                 )
@@ -94,14 +93,13 @@ def create_mock_data():
                 question = Questions.objects.create(
                     question=f"{sub['name']} {chap['name']} 2-mark Q{i}",
                     options=["True/False", "Short Answer", "Explanation"],
-                    answer="True/False"
+                    answer={"correct": "True/False"}
                 )
                 
                 # Create Hero Question
                 HeroQuestions.objects.create(
                     topic=topic,
                     question=question,
-                    answer={"correct": "True/False"},
                     stream=stream,
                     marks=2
                 )

@@ -42,8 +42,7 @@ class HeroQuestionsWithoutAnswerSerializer(serializers.ModelSerializer):
     question = QuestionsWithoutAnswerSerializer()
     class Meta:
         model = HeroQuestions
-        exclude = ('answer',)
-
+        fields = '__all__'
 
 class ChapterRequestSerializer(serializers.Serializer):
     chapter_id = serializers.IntegerField(min_value=1, required=True)
@@ -64,12 +63,77 @@ class CustomTestSerializer(serializers.Serializer):
     time_minutes = serializers.IntegerField(min_value=1, required=True)
     
     
-class TestAnswerSerializer(serializers.Serializer):
-    question_id = serializers.IntegerField(required=True)
-    user_answer = serializers.CharField(required=True)
+    
+# class TestAnswerSerializer(serializers.Serializer):
+#     question_id = serializers.IntegerField(required=True)
+#     user_answer = serializers.CharField(required=True)
 
-class TestResultSerializer(serializers.Serializer):
-    answers = serializers.ListField(
-        child=TestAnswerSerializer(),
-        required=True
+# class TestResultSerializer(serializers.Serializer):
+#     answers = serializers.ListField(
+#         child=TestAnswerSerializer(),
+#         required=True
+#     )
+
+class ResultQuestionLinkSerializer(serializers.ModelSerializer):
+    question_id = serializers.PrimaryKeyRelatedField(
+        queryset=Questions.objects.all(),
+        source='question_id.id'  # Maps to the question_id ForeignKey
     )
+
+    class Meta:
+        model = ResultQuestionLink
+        fields = ['question_id', 'user_answer', 'is_correct']
+
+
+class GeneratedTestPaperSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GeneratedTestPaper
+        fields = '__all__'
+    
+    def get_questions(self, obj):
+        questions = TestQuestionLink.objects.filter(test_id=obj)
+        return HeroQuestionsWithoutAnswerSerializer(questions, many=True).data
+        
+            
+class TestHistorySerializer(serializers.ModelSerializer):
+    questions = ResultQuestionLinkSerializer(many=True)
+
+    class Meta:
+        model = TestHistory
+        fields = [
+            'total_marks', 
+            'obtained_marks', 
+            'time', 
+            'test_type', 
+            'stream', 
+            'subjects_included', 
+            'questions'
+        ]
+        extra_kwargs = {
+            'stream': {'required': True},
+            'subjects_included': {'required': True}
+        }
+
+    def create(self, validated_data):
+        questions_data = validated_data.pop('questions')
+        user = self.context['request'].user
+        
+        # Create UserResult
+        user_result = TestHistory.objects.create(
+            user=user,
+            **validated_data
+        )
+        
+        # Create ResultQuestionLink entries
+        for q_data in questions_data:
+            is_correct = False
+            if q_data['user_answer'] == Questions.objects.get(id=q_data['question_id']['id']).answer:
+                is_correct = True
+            ResultQuestionLink.objects.create(
+                result_id=user_result,
+                question_id=q_data['question_id']['id'],  # Access the Questions instance
+                user_answer=q_data['user_answer'],
+                is_correct = is_correct
+            )
+        
+        return user_result

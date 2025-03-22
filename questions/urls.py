@@ -14,5 +14,6 @@ urlpatterns = [
     path('', include(router.urls)),
     path('ioe/mocktest/', generate_mock_test, name='mock-test'), 
     path('ioe/custom-test/', create_custom_test, name='custom-test'), 
-    path('check-result/', check_test_result, name='check-test-result')
+    path('submit-result/', SubmitResultView.as_view(), name='submit-result'),
+    
 ]
