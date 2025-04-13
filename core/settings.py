@@ -30,7 +30,7 @@ SECRET_KEY = 'django-insecure-_nc21qossj#a)xe)$@#2v=749o3)kv5j3jfx3kor#@h@q3c+45
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -190,12 +190,19 @@ USE_I18N = True
 
 USE_TZ = True
 
-CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_ALL_ORIGINS = True
 
 CORS_ALLOW_HEADERS = [
     'authorization',
     'content-type',
+
 ]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # your frontend
+    "https://ae53-111-119-49-56.ngrok-free.app",  # your backend via ngrok
+]
+
 CORS_ALLOW_CREDENTIALS = True
 
 # Static files (CSS, JavaScript, Images)

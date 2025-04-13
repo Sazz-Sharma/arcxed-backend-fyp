@@ -33,13 +33,6 @@ class HeroQuestions(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     
-# def get_stream(stream_name):
-#     try:
-#         return Streams.objects.get(stream_name=stream_name)
-#     except Streams.DoesNotExist:
-#         raise ValueError(f"Stream {stream_name} is missing! Please create it manually.")
-
-
     
 class GeneratedTestPaper(models.Model):
     id = models.AutoField(primary_key=True)
@@ -90,7 +83,8 @@ class TestHistory(models.Model):
 class ResultQuestionLink(models.Model):
     result_id = models.ForeignKey(TestHistory, on_delete=models.CASCADE)
     question_id = models.ForeignKey(Questions, on_delete=models.CASCADE)
-    user_answer = models.TextField()
+    # user_answer = models.TextField() # CHANGE THIS
+    user_answer = models.JSONField() # TO THIS (Requires Django 3.1+ and appropriate DB support)
     is_correct = models.BooleanField()
     
     
