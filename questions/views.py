@@ -1,10 +1,10 @@
 from django.shortcuts import render
 
-from rest_framework import viewsets, status, views
+from rest_framework import viewsets, status, views, generics
 from .models import *
 from .serializers import *
 from rest_framework.permissions import IsAuthenticated
-from .permissions import IsSuperUser
+from .permissions import IsSuperUser, IsSuperUserOrReadOnly
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework.decorators import api_view, permission_classes
@@ -13,12 +13,14 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from django.db import transaction 
+from django.db.models import Count, Sum, Avg, F, Case, When, IntegerField, FloatField
+from django.db.models.functions import Cast
 
 
 class SubjectsViewSet(viewsets.ModelViewSet):
     queryset = Subjects.objects.all()
     serializer_class = SubjectsSerializer
-    permission_classes = [IsSuperUser]
+    permission_classes = [IsSuperUserOrReadOnly]
 
     @swagger_auto_schema(
         operation_description="Retrieve a list of subjects",
@@ -30,7 +32,7 @@ class SubjectsViewSet(viewsets.ModelViewSet):
 class StreamsViewSet(viewsets.ModelViewSet):
     queryset = Streams.objects.all()
     serializer_class = StreamsSerializer
-    permission_classes = [IsSuperUser]
+    permission_classes = [IsSuperUserOrReadOnly]
 
     @swagger_auto_schema(
         operation_description="Retrieve a list of streams",
@@ -42,7 +44,7 @@ class StreamsViewSet(viewsets.ModelViewSet):
 class ChaptersViewSet(viewsets.ModelViewSet):
     queryset = Chapters.objects.all()
     serializer_class = ChaptersSerializer
-    permission_classes = [IsSuperUser]
+    permission_classes = [IsSuperUserOrReadOnly]
 
     @swagger_auto_schema(
         operation_description="Retrieve a list of chapters",
@@ -437,7 +439,7 @@ def create_custom_test(request):
                 question_id=question # question is a HeroQuestions instance here
             )
         )
-    TestQuestionLink.objects.bulk_create(test_links) # More efficient for multiple links
+    TestQuestionLink.objects.bulk_create(test_links) 
 
     # --- Serialize the results ---
     test_paper_serializer = GeneratedTestPaperSerializer(generated_test_paper)
@@ -445,9 +447,9 @@ def create_custom_test(request):
 
     # --- Return the response ---
     return Response({
-        'test_details': test_paper_serializer.data, # Contains the created test paper info (including its ID)
-        'questions': questions_serializer.data # Contains the questions for the frontend to display
-    }, status=status.HTTP_201_CREATED) # Use 201 Created status code
+        'test_details': test_paper_serializer.data, 
+        'questions': questions_serializer.data 
+    }, status=status.HTTP_201_CREATED) 
 
 
 class TestSubmissionView(views.APIView):
@@ -487,7 +489,7 @@ class TestSubmissionView(views.APIView):
             # --- Success ---
             201: openapi.Response(
                 description="CREATED: Test submitted successfully. Returns the detailed test result including score and breakdown per question.",
-                schema=TestHistorySerializer # Use serializer for success response schema
+                schema=TestHistoryDetailSerializer # Use serializer for success response schema
             ),
             # --- Client Errors ---
             400: openapi.Response(
@@ -607,20 +609,41 @@ class TestSubmissionView(views.APIView):
                 )
 
                 # Create ResultQuestionLink entries
-                result_links_to_create = []
-                for result_data in processed_results:
-                    result_links_to_create.append(
-                        ResultQuestionLink(
-                            result_id=test_history, # Link to the history instance
-                            question_id=result_data['question_instance'], # Link to the question instance
-                            user_answer=result_data['user_answer'],
-                            is_correct=result_data['is_correct']
-                        )
-                    )
+                # result_links_to_create = []
+                # for result_data in processed_results:
+                #     result_links_to_create.append(
+                #         ResultQuestionLink(
+                #             result_id=test_history, # Link to the history instance
+                #             question_id=result_data['question_instance'], # Link to the question instance
+                #             user_answer=result_data['user_answer'],
+                #             is_correct=result_data['is_correct']
+                #         )
+                #     )
                 
-                # Use bulk_create for efficiency
-                if result_links_to_create:
-                    ResultQuestionLink.objects.bulk_create(result_links_to_create)
+                # # Use bulk_create for efficiency
+                # if result_links_to_create:
+                #     ResultQuestionLink.objects.bulk_create(result_links_to_create)
+                result_links_to_create = []
+            for result_data in processed_results:
+                # Get the marks for this question instance from the details map
+                question_marks = question_details_map.get(result_data['question_instance'].id, {}).get('marks', 1) # Default marks to 1 if somehow not found
+
+                result_links_to_create.append(
+                    ResultQuestionLink(
+                        result_id=test_history,
+                        question_id=result_data['question_instance'],
+                        user_answer=result_data['user_answer'],
+                        is_correct=result_data['is_correct'],
+                        # NEW: Save the marks
+                        total_marks=question_marks,
+                        marks_obtained=question_marks if result_data['is_correct'] else 0
+                    )
+                )
+
+            # Use bulk_create for efficiency
+            if result_links_to_create:
+                ResultQuestionLink.objects.bulk_create(result_links_to_create)
+
 
         except Exception as e:
             # Log the exception e
@@ -630,6 +653,241 @@ class TestSubmissionView(views.APIView):
 
         # 6. Serialize the created TestHistory for the response
         # Use TestHistorySerializer (ensure it's set up for reading nested results correctly)
-        response_serializer = TestHistorySerializer(test_history)
+        response_serializer = TestHistoryDetailSerializer(test_history)
 
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class TestHistoryListView(generics.ListAPIView):
+    """
+    Provides a list of test summaries taken by the authenticated user.
+    """
+    serializer_class = TestHistorySummarySerializer
+    permission_classes = [IsAuthenticated]
+    # pagination_class = PageNumberPagination # Optional: Add pagination
+
+    def get_queryset(self):
+        # Order by most recent first
+        return TestHistory.objects.filter(user=self.request.user).order_by('-created_at')
+
+    @swagger_auto_schema(
+        operation_summary="List User's Test History",
+        responses={200: TestHistorySummarySerializer(many=True)}
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+class TestHistoryDetailView(generics.RetrieveAPIView):
+    """
+    Provides detailed results for a specific test taken by the authenticated user.
+    Includes each question, user answer, correct answer, and correctness.
+    """
+    serializer_class = TestHistoryDetailSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = TestHistory.objects.prefetch_related(
+        'question_links__question_id' # Prefetch for efficiency
+    ).all()
+    lookup_field = 'id' # Or 'pk'
+
+    def get_queryset(self):
+        # Ensure users can only retrieve their own history
+        return super().get_queryset().filter(user=self.request.user)
+
+    @swagger_auto_schema(
+        operation_summary="Get Detailed Test Result",
+        responses={
+            200: TestHistoryDetailSerializer(),
+            404: "Not Found (Test history does not exist or doesn't belong to user)"
+         }
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+    
+
+
+class OverallStatsView(APIView):
+    """
+    Provides overall performance statistics for the authenticated user
+    across all tests taken.
+    """
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="Get Overall User Statistics",
+        responses={200: OverallStatsSerializer()}
+    )
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        history_qs = TestHistory.objects.filter(user=user)
+        results_qs = ResultQuestionLink.objects.filter(result_id__user=user)
+
+        # Calculate aggregates
+        total_tests_taken = history_qs.count()
+        overall_aggregates = results_qs.aggregate(
+            total_attempted=Count('id'),
+            total_correct=Sum(Case(When(is_correct=True, then=1), default=0, output_field=IntegerField())),
+            sum_marks_possible=Sum('total_marks'),
+            sum_marks_obtained=Sum('marks_obtained')
+        )
+
+        total_questions_attempted = overall_aggregates.get('total_attempted', 0) or 0
+        total_correct_answers = overall_aggregates.get('total_correct', 0) or 0
+        total_marks_possible = overall_aggregates.get('sum_marks_possible', 0) or 0
+        total_marks_obtained = overall_aggregates.get('sum_marks_obtained', 0) or 0
+
+        # Calculate percentages safely
+        accuracy = (total_correct_answers * 100.0 / total_questions_attempted) if total_questions_attempted > 0 else 0.0
+        score = (total_marks_obtained * 100.0 / total_marks_possible) if total_marks_possible > 0 else 0.0
+
+        stats_data = {
+            "total_tests_taken": total_tests_taken,
+            "total_questions_attempted": total_questions_attempted,
+            "total_correct_answers": total_correct_answers,
+            "total_marks_possible": total_marks_possible,
+            "total_marks_obtained": total_marks_obtained,
+            "overall_accuracy_percentage": round(accuracy, 2),
+            "overall_score_percentage": round(score, 2),
+        }
+
+        serializer = OverallStatsSerializer(instance=stats_data)
+        return Response(serializer.data)
+
+
+class BasePerformanceStatsView(APIView):
+    """ Base class for performance stats views (Subject, Chapter, Topic) """
+    permission_classes = [IsAuthenticated]
+    grouping_field_id = None      # e.g., 'question_id__topic__chapter__sub_id'
+    grouping_field_name = None    # e.g., 'question_id__topic__chapter__sub_id__subject_name'
+    serializer_class = None       # e.g., SubjectPerformanceSerializer
+
+    def get_stats(self, request):
+        if not self.grouping_field_id or not self.serializer_class:
+             raise NotImplementedError("Subclasses must define grouping fields and serializer_class")
+
+        user = request.user
+        # Base query - IMPORTANT: Assumes Questions.topic FK is populated
+        stats = ResultQuestionLink.objects.filter(
+            result_id__user=user,
+            question_id__topic__isnull=False # Exclude questions without a topic link for reliable grouping
+        ).values(
+            self.grouping_field_id # Group by the ID field
+        ).annotate(
+            group_id=F(self.grouping_field_id), # Use F() to reference the field path
+            group_name=F(self.grouping_field_name) if self.grouping_field_name else None, # Get name if defined
+            attempted=Count('id'),
+            correct=Sum(Case(When(is_correct=True, then=1), default=0, output_field=IntegerField())),
+            total_marks_possible=Sum('total_marks'),
+            marks_obtained=Sum('marks_obtained')
+        ).values( # Select the final fields
+            'group_id', 'group_name', 'attempted', 'correct',
+            'total_marks_possible', 'marks_obtained'
+        )
+
+        # Calculate percentages in Python for clarity and division safety
+        results = []
+        for item in stats:
+            accuracy = (item['correct'] * 100.0 / item['attempted']) if item['attempted'] > 0 else 0.0
+            score = (item['marks_obtained'] * 100.0 / item['total_marks_possible']) if item['total_marks_possible'] > 0 else 0.0
+            # Renaming group_id/group_name to match specific serializer fields
+            # This could be cleaner using serializer source attribute if structure is consistent
+            item_data = item.copy()
+            item_data[self.serializer_class.Meta.fields[0]] = item_data.pop('group_id') # e.g., subject_id
+            item_data[self.serializer_class.Meta.fields[1]] = item_data.pop('group_name') # e.g., subject_name
+            item_data['accuracy_percentage'] = round(accuracy, 2)
+            item_data['score_percentage'] = round(score, 2)
+            results.append(item_data)
+
+        return results
+
+    def get(self, request, *args, **kwargs):
+        stats_data = self.get_stats(request)
+        serializer = self.serializer_class(instance=stats_data, many=True)
+        return Response(serializer.data)
+
+
+class SubjectPerformanceStatsView(BasePerformanceStatsView):
+    """ Performance aggregated by Subject. """
+    grouping_field_id = 'question_id__topic__chapter__sub_id'
+    grouping_field_name = 'question_id__topic__chapter__sub_id__subject_name'
+    serializer_class = SubjectPerformanceSerializer
+
+    @swagger_auto_schema(
+        operation_summary="Get User Performance by Subject",
+        responses={200: SubjectPerformanceSerializer(many=True)}
+    )
+    def get(self, request, *args, **kwargs):
+         # This explicit definition helps drf-yasg find the serializer
+        return super().get(request, *args, **kwargs)
+
+
+class ChapterPerformanceStatsView(BasePerformanceStatsView):
+    """ Performance aggregated by Chapter. """
+    grouping_field_id = 'question_id__topic__chapter_id'
+    grouping_field_name = 'question_id__topic__chapter__chapter_name'
+    serializer_class = ChapterPerformanceSerializer # Need to define Meta in serializer
+
+    @swagger_auto_schema(
+        operation_summary="Get User Performance by Chapter",
+        responses={200: ChapterPerformanceSerializer(many=True)}
+    )
+    def get(self, request, *args, **kwargs):
+        # Add Meta class to ChapterPerformanceSerializer for field mapping if using base class logic
+        # Or adjust the base class logic / override get_stats if needed
+        # For now, assuming serializer setup matches the renaming logic in get_stats
+        # We need to define Meta on the serializer for the renaming to work robustly
+         return super().get(request, *args, **kwargs)
+
+
+class TopicPerformanceStatsView(BasePerformanceStatsView):
+    """ Performance aggregated by Topic. """
+    grouping_field_id = 'question_id__topic_id'
+    grouping_field_name = 'question_id__topic__topic_name'
+    serializer_class = TopicPerformanceSerializer # Need to define Meta in serializer
+
+    @swagger_auto_schema(
+        operation_summary="Get User Performance by Topic",
+        responses={200: TopicPerformanceSerializer(many=True)}
+    )
+    def get(self, request, *args, **kwargs):
+        # Add Meta class to TopicPerformanceSerializer for field mapping
+         return super().get(request, *args, **kwargs)
+    
+
+
+
+
+
+# --- Add Meta classes to performance serializers ---
+# serializers.py
+
+# ... other serializers ...
+class SubjectPerformanceSerializer(BasePerformanceSerializer):
+    subject_id = serializers.IntegerField()
+    subject_name = serializers.CharField()
+    class Meta: # Add Meta for field reference in base view
+        fields = ['subject_id', 'subject_name', 'attempted', 'correct', 'total_marks_possible', 'marks_obtained', 'accuracy_percentage', 'score_percentage']
+
+class ChapterPerformanceSerializer(BasePerformanceSerializer):
+    chapter_id = serializers.IntegerField()
+    chapter_name = serializers.CharField()
+    # Example of including parent details if needed (adjust query/annotation accordingly)
+    # subject_id = serializers.IntegerField(read_only=True)
+    # subject_name = serializers.CharField(read_only=True)
+    class Meta: # Add Meta
+        fields = ['chapter_id', 'chapter_name', 'attempted', 'correct', 'total_marks_possible', 'marks_obtained', 'accuracy_percentage', 'score_percentage']
+
+class TopicPerformanceSerializer(BasePerformanceSerializer):
+    topic_id = serializers.IntegerField()
+    topic_name = serializers.CharField()
+    # chapter_id = serializers.IntegerField(read_only=True)
+    # chapter_name = serializers.CharField(read_only=True)
+    # subject_id = serializers.IntegerField(read_only=True)
+    # subject_name = serializers.CharField(read_only=True)
+    class Meta: # Add Meta
+        fields = ['topic_id', 'topic_name', 'attempted', 'correct', 'total_marks_possible', 'marks_obtained', 'accuracy_percentage', 'score_percentage']
+
+
+
+
+
+

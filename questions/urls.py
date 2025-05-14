@@ -15,5 +15,14 @@ urlpatterns = [
     path('ioe/mocktest/', generate_mock_test, name='mock-test'), 
     path('ioe/custom-test/', create_custom_test, name='custom-test'), 
     path('tests/generated/<int:test_paper_id>/submit/', TestSubmissionView.as_view(), name='test-submit'),
+
+
+     path('history/', TestHistoryListView.as_view(), name='test-history-list'),
+    path('history/<int:id>/', TestHistoryDetailView.as_view(), name='test-history-detail'), # Use 'id' to match lookup_field
+    path('stats/overall/', OverallStatsView.as_view(), name='overall-stats'),
+    path('stats/by-subject/', SubjectPerformanceStatsView.as_view(), name='subject-stats'),
+    path('stats/by-chapter/', ChapterPerformanceStatsView.as_view(), name='chapter-stats'),
+    path('stats/by-topic/', TopicPerformanceStatsView.as_view(), name='topic-stats'),
+
 ]
 
