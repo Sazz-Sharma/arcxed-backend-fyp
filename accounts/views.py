@@ -63,7 +63,7 @@ class GoogleLoginView(APIView):
             )
             token_data = token_response.json()
             print(token_data)
-            idinfo = id_token.verify_oauth2_token(token_data['id_token'], google_requests.Request(), os.getenv('GOOGLE_CLIENT_ID'))
+            idinfo = id_token.verify_oauth2_token(token_data['id_token'], google_requests.Request(), os.getenv('GOOGLE_CLIENT_ID'), clock_skew_in_seconds=5)
 
             # Proceed with user creation/login
             email = idinfo['email']

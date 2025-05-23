@@ -9,6 +9,11 @@ router = DefaultRouter()
 router.register(r'subjects', SubjectsViewSet, basename='subjects')
 router.register(r'streams', StreamsViewSet, basename='streams')
 router.register(r'chapters', ChaptersViewSet, basename='chapters')
+router.register(r'topics', TopicsViewSet, basename='topics')
+
+router.register(r'questions-base', QuestionViewSet, basename='question-base')
+router.register(r'hero-questions', HeroQuestionViewSet, basename='hero-question')
+
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -16,8 +16,6 @@ class ChaptersSerializer(serializers.ModelSerializer):
         model = Chapters
         fields = '__all__'
 
-
-
 class TopicsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Topics
@@ -67,16 +65,6 @@ class QuestionWithAnswerSerializer(serializers.ModelSerializer):
         model = Questions
         fields = ['id', 'question', 'options', 'answer'] # Include answer
     
-    
-# class TestAnswerSerializer(serializers.Serializer):
-#     question_id = serializers.IntegerField(required=True)
-#     user_answer = serializers.CharField(required=True)
-
-# class TestResultSerializer(serializers.Serializer):
-#     answers = serializers.ListField(
-#         child=TestAnswerSerializer(),
-#         required=True
-#     )
 
 class ResultQuestionLinkSerializer(serializers.ModelSerializer):
     question_id = serializers.PrimaryKeyRelatedField(
@@ -102,8 +90,6 @@ class GeneratedTestPaperSerializer(serializers.ModelSerializer):
 class AnswerSubmissionSerializer(serializers.Serializer):
     # Use the ID of the base Question model for easier lookup of the correct answer
     question_id = serializers.IntegerField(required=True)
-    # User's answer - Make sure the frontend sends data matching the structure
-    # of the 'answer' JSONField in your Questions model (e.g., a string, a list, etc.)
     user_answer = serializers.JSONField(required=True)
 
 # New Serializer for the entire test submission
@@ -113,26 +99,7 @@ class TestSubmissionSerializer(serializers.Serializer):
         required=True,
         allow_empty=False # A submission must have answers
     )
-    # Optional: Frontend can send time spent in seconds or minutes
     time_taken = serializers.IntegerField(required=False, default=0)
-
-# --- Modify TestHistorySerializer ---
-
-# class ResultQuestionLinkSerializer(serializers.ModelSerializer):
-#     # Keep this as is - it's used for *outputting* results mainly,
-#     # but also informs the structure needed for nested writes.
-#     # When creating, we'll provide the 'question_id' as an integer PK.
-#     question = QuestionsSerializer(read_only=True) # Show full question detail on result retrieval
-#     question_id = serializers.PrimaryKeyRelatedField(
-#         queryset=Questions.objects.all(),
-#         write_only=True # Use this field for writing
-#     )
-
-#     class Meta:
-#         model = ResultQuestionLink
-#         # Include 'question' for reading, 'question_id' is implicitly used for writing
-#         fields = ['question_id', 'user_answer', 'is_correct', 'question']
-#         read_only_fields = ['is_correct', 'question'] # is_correct is calculated server-side
 
 class ResultQuestionLinkDetailSerializer(serializers.ModelSerializer):
     # Show nested question object WITH the correct answer
@@ -179,8 +146,6 @@ class TestHistoryDetailSerializer(serializers.ModelSerializer):
 class AnswerSubmissionSerializer(serializers.Serializer):
     # Use the ID of the base Question model for easier lookup of the correct answer
     question_id = serializers.IntegerField(required=True)
-    # User's answer - Make sure the frontend sends data matching the structure
-    # of the 'answer' JSONField in your Questions model (e.g., a string, a list, etc.)
     user_answer = serializers.JSONField(required=True)
 
 # New Serializer for the entire test submission
@@ -239,20 +204,145 @@ class BasePerformanceSerializer(serializers.Serializer):
 class SubjectPerformanceSerializer(BasePerformanceSerializer):
     subject_id = serializers.IntegerField()
     subject_name = serializers.CharField()
+    class Meta: # Add Meta for field reference in base view
+        fields = ['subject_id', 'subject_name', 'attempted', 'correct', 'total_marks_possible', 'marks_obtained', 'accuracy_percentage', 'score_percentage']
 
 class ChapterPerformanceSerializer(BasePerformanceSerializer):
     chapter_id = serializers.IntegerField()
     chapter_name = serializers.CharField()
-    # Optionally include parent subject info
-    subject_id = serializers.IntegerField(source='topic__chapter__sub_id__id') # Example source path
-    subject_name = serializers.CharField(source='topic__chapter__sub_id__subject_name') # Example source path
+    # Example of including parent details if needed (adjust query/annotation accordingly)
+    # subject_id = serializers.IntegerField(read_only=True)
+    # subject_name = serializers.CharField(read_only=True)
+    class Meta: # Add Meta
+        fields = ['chapter_id', 'chapter_name', 'attempted', 'correct', 'total_marks_possible', 'marks_obtained', 'accuracy_percentage', 'score_percentage']
 
 class TopicPerformanceSerializer(BasePerformanceSerializer):
     topic_id = serializers.IntegerField()
     topic_name = serializers.CharField()
-    # Optionally include parent chapter/subject info
-    chapter_id = serializers.IntegerField(source='topic__chapter_id')
-    chapter_name = serializers.CharField(source='topic__chapter__chapter_name')
-    subject_id = serializers.IntegerField(source='topic__chapter__sub_id__id')
-    subject_name = serializers.CharField(source='topic__chapter__sub_id__subject_name')
+    class Meta:
+        fields = [
+            'topic_id', 'topic_name',
+            'attempted', 'correct',
+            'total_marks_possible', 'marks_obtained',
+            'accuracy_percentage', 'score_percentage'
+        ]
 
+
+class HeroQuestionWritePayloadSerializer(serializers.Serializer):
+    question = serializers.CharField(max_length=10000)
+    options = serializers.ListField(child=serializers.CharField())
+    answer = serializers.JSONField()
+    # topic_id is handled by the parent HeroQuestionCreateUpdateSerializer
+
+    # No create/update methods needed here as it's just for payload structure validation
+
+class HeroQuestionCreateUpdateSerializer(serializers.ModelSerializer):
+    topic_id = serializers.PrimaryKeyRelatedField(
+        queryset=Topics.objects.all(), source='topic',
+        help_text="ID of the Topic for this hero question instance."
+    )
+    stream_id = serializers.PrimaryKeyRelatedField(
+        queryset=Streams.objects.all(), source='stream',
+        help_text="ID of the Stream this hero question belongs to."
+    )
+    existing_question_id = serializers.PrimaryKeyRelatedField(
+        queryset=Questions.objects.all(), source='question', required=False, allow_null=True,
+        help_text="ID of an existing base question. If provided, 'new_question_details' will be ignored."
+    )
+    new_question_details = HeroQuestionWritePayloadSerializer(
+        required=False, write_only=True,
+        help_text="Details to create a new base question if 'existing_question_id' is not provided."
+    )
+    marks = serializers.IntegerField(help_text="Marks for this question (e.g., 1 or 2).")
+
+    class Meta:
+        model = HeroQuestions
+        fields = [
+            'topic_id', 'stream_id', 'marks',
+            'existing_question_id', 'new_question_details'
+        ]
+
+    def validate(self, data):
+        existing_question_obj = data.get('question') # 'question' is the source for existing_question_id
+        new_question_data = data.get('new_question_details')
+
+        if not existing_question_obj and not new_question_data:
+            raise serializers.ValidationError(
+                "Either 'existing_question_id' or 'new_question_details' must be provided."
+            )
+        if existing_question_obj and new_question_data:
+            data.pop('new_question_details') # Prioritize existing_question_id
+        return data
+
+    def create(self, validated_data):
+        new_question_payload = validated_data.pop('new_question_details', None)
+        base_question = validated_data.get('question') # From existing_question_id
+        topic_obj = validated_data.get('topic')     # From topic_id
+        stream_obj = validated_data.get('stream')   # From stream_id
+        marks_val = validated_data.get('marks')
+
+        if not base_question and new_question_payload:
+            try:
+                base_question = Questions.objects.create(
+                    topic=topic_obj, # Assign the topic from HeroQuestion to the new base Question
+                    question=new_question_payload['question'],
+                    options=new_question_payload['options'],
+                    answer=new_question_payload['answer']
+                )
+            except IntegrityError as e: # E.g. if Questions.question has a unique constraint
+                raise serializers.ValidationError({"new_question_details": f"Could not create base question (it might already exist or another DB constraint): {str(e)}"})
+            except Exception as e:
+                raise serializers.ValidationError({"new_question_details": f"Error creating base question: {str(e)}"})
+        elif not base_question:
+             raise serializers.ValidationError("Base question could not be determined.")
+
+        try:
+            hero_question = HeroQuestions.objects.create(
+                question=base_question,
+                topic=topic_obj,
+                stream=stream_obj,
+                marks=marks_val
+            )
+        except IntegrityError:
+             # This assumes HeroQuestions has a unique_together on (question, topic, stream)
+             # If not, this specific error won't be raised for duplicates of this combination.
+             raise serializers.ValidationError({
+                 "detail": "This specific hero question (combination of base question, topic, and stream) already exists."
+             }, code="duplicate")
+        return hero_question
+
+    def update(self, instance, validated_data):
+        new_question_payload = validated_data.pop('new_question_details', None)
+        
+        # If existing_question_id is provided in payload, it's mapped to 'question'
+        if 'question' in validated_data: 
+            instance.question = validated_data.get('question', instance.question)
+        # Note: Updating based on 'new_question_details' in an UPDATE operation is complex.
+        # It could mean:
+        # 1. Update the *linked* base question's details (better done via a /questions-base/{id} endpoint).
+        # 2. Create a *new* base question and re-link this HeroQuestion (less common for 'update').
+        # For simplicity, this 'update' primarily handles changing the linked base_question, topic, stream, marks.
+        # If 'new_question_details' is provided on update, it will be ignored if 'existing_question_id' is also present (due to validate method).
+        # If only 'new_question_details' is given on update without 'existing_question_id', it could imply creating a new base Q and re-linking.
+        # Let's clarify this: if new_question_details is provided on update AND no existing_question_id is, we create a new base question.
+        elif new_question_payload and not validated_data.get('question'): # if existing_question_id was NOT provided
+             try:
+                 base_question_topic = validated_data.get('topic', instance.topic)
+                 new_base_q = Questions.objects.create(
+                     topic=base_question_topic,
+                     question=new_question_payload['question'],
+                     options=new_question_payload['options'],
+                     answer=new_question_payload['answer']
+                 )
+                 instance.question = new_base_q # Re-link to the newly created base question
+             except IntegrityError as e:
+                 raise serializers.ValidationError({"new_question_details": f"Could not create new base question for update (it might already exist or another DB constraint): {str(e)}"})
+             except Exception as e:
+                 raise serializers.ValidationError({"new_question_details": f"Error creating new base question for update: {str(e)}"})
+
+
+        instance.topic = validated_data.get('topic', instance.topic)
+        instance.stream = validated_data.get('stream', instance.stream)
+        instance.marks = validated_data.get('marks', instance.marks)
+        instance.save()
+        return instance

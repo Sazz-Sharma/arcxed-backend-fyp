@@ -15,7 +15,10 @@ from rest_framework.views import APIView
 from django.db import transaction 
 from django.db.models import Count, Sum, Avg, F, Case, When, IntegerField, FloatField
 from django.db.models.functions import Cast
-
+import json
+from django.db import IntegrityError
+from .filters import HeroQuestionFilter 
+from django_filters.rest_framework import DjangoFilterBackend
 
 class SubjectsViewSet(viewsets.ModelViewSet):
     queryset = Subjects.objects.all()
@@ -24,6 +27,18 @@ class SubjectsViewSet(viewsets.ModelViewSet):
 
     @swagger_auto_schema(
         operation_description="Retrieve a list of subjects",
+        responses={200: SubjectsSerializer(many=True)}
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+    
+class TopicsViewSet(viewsets.ModelViewSet):
+    queryset = Topics.objects.all()
+    serializer_class = TopicsSerializer
+    permission_classes = [IsSuperUserOrReadOnly]
+
+    @swagger_auto_schema(
+        operation_description="Retrieve a list of topics",
         responses={200: SubjectsSerializer(many=True)}
     )
     def list(self, request, *args, **kwargs):
@@ -52,8 +67,149 @@ class ChaptersViewSet(viewsets.ModelViewSet):
     )
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
-    
-    
+
+
+class QuestionViewSet(viewsets.ModelViewSet): # For managing base Questions
+    """
+    API endpoint for managing base Questions in the question bank.
+    """
+    queryset = Questions.objects.all().select_related('topic__chapter__sub_id').order_by('-id')
+    serializer_class = QuestionsSerializer # Use your existing QuestionsSerializer
+    # permission_classes = [IsSuperUserOrReadOnly] # Apply permissions as needed
+
+    # View-specific filtering (if you want it, otherwise remove filter_backends and filterset_fields)
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = {
+        'topic__id': ['exact'],
+        'topic__chapter__id': ['exact'],
+        'topic__chapter__sub_id__id': ['exact'], # subject id
+        'question': ['icontains']
+    }
+    # No default pagination is applied here unless you explicitly add it.
+
+    @swagger_auto_schema(
+        operation_summary="List all base questions",
+        manual_parameters=[
+            openapi.Parameter('topic__id', openapi.IN_QUERY, type=openapi.TYPE_INTEGER),
+            openapi.Parameter('topic__chapter__id', openapi.IN_QUERY, type=openapi.TYPE_INTEGER),
+            openapi.Parameter('topic__chapter__sub_id__id', openapi.IN_QUERY, type=openapi.TYPE_INTEGER),
+            openapi.Parameter('question__icontains', openapi.IN_QUERY, type=openapi.TYPE_STRING),
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @swagger_auto_schema(operation_summary="Create a new base question", request_body=QuestionsSerializer)
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @swagger_auto_schema(operation_summary="Retrieve a base question")
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @swagger_auto_schema(operation_summary="Update a base question", request_body=QuestionsSerializer)
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @swagger_auto_schema(operation_summary="Partially update a base question", request_body=QuestionsSerializer)
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @swagger_auto_schema(operation_summary="Delete a base question")
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+
+class HeroQuestionViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing Hero Questions (questions for tests).
+    Supports CRUD and filtering by subject, chapter, topic, stream, marks, and base question ID.
+    """
+    queryset = HeroQuestions.objects.select_related(
+        'question__topic', 'topic__chapter__sub_id', 'stream' # Optimize queries
+    ).all().order_by('-id')
+    # permission_classes = [IsSuperUserOrReadOnly] # Apply permissions as needed
+
+    # --- View-specific filtering and pagination ---
+    # This ensures only this ViewSet uses these settings.
+    filter_backends = [DjangoFilterBackend] # Enable django-filter
+    filterset_class = HeroQuestionFilter    # Use the custom filter
+
+    # If you want pagination ONLY for this endpoint:
+    # from rest_framework.pagination import PageNumberPagination
+    # class StandardResultsSetPagination(PageNumberPagination):
+    #     page_size = 10
+    #     page_size_query_param = 'page_size'
+    #     max_page_size = 100
+    # pagination_class = StandardResultsSetPagination # Uncomment to enable pagination for this viewset
+
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return HeroQuestionCreateUpdateSerializer
+        # Use your existing HeroQuestionsSerializer for list/retrieve
+        return HeroQuestionsSerializer
+
+    @swagger_auto_schema(
+        operation_summary="List Hero Questions",
+        responses={200: HeroQuestionsSerializer(many=True)}
+        # drf-yasg will automatically pick up parameters from filterset_class
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Create a new Hero Question",
+        request_body=HeroQuestionCreateUpdateSerializer,
+        responses={
+            201: HeroQuestionsSerializer(), # Show using the read serializer
+            400: "Validation Error"
+        }
+    )
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        # Return the representation using your existing HeroQuestionsSerializer for reads
+        read_serializer = HeroQuestionsSerializer(instance, context={'request': request})
+        headers = self.get_success_headers(read_serializer.data)
+        return Response(read_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    @swagger_auto_schema(
+        operation_summary="Retrieve a specific Hero Question",
+        responses={200: HeroQuestionsSerializer(), 404: "Not Found"}
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Update a Hero Question",
+        request_body=HeroQuestionCreateUpdateSerializer,
+        responses={200: HeroQuestionsSerializer(), 400: "Validation Error", 404: "Not Found"}
+    )
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        updated_instance = serializer.save()
+        read_serializer = HeroQuestionsSerializer(updated_instance, context={'request': request})
+        return Response(read_serializer.data)
+
+    @swagger_auto_schema(
+        operation_summary="Partially update a Hero Question",
+        request_body=HeroQuestionCreateUpdateSerializer,
+        responses={200: HeroQuestionsSerializer(), 400: "Validation Error", 404: "Not Found"}
+    )
+    def partial_update(self, request, *args, **kwargs):
+        kwargs['partial'] = True # Ensure partial update logic is triggered
+        return self.update(request, *args, **kwargs) # Reuse the update method
+
+    @swagger_auto_schema(
+        operation_summary="Delete a Hero Question",
+        responses={204: "No Content", 404: "Not Found"}
+    )
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -175,102 +331,6 @@ def generate_mock_test(request):
         'questions': question_serializer.data
     })
 
-# @swagger_auto_schema(
-#     method='post',
-#     request_body=CustomTestSerializer,
-#     responses={
-#         200: openapi.Response(
-#             description="Custom test generated successfully",
-#             schema=openapi.Schema(
-#                 type=openapi.TYPE_OBJECT,
-#                 properties={
-#                     'test_details': openapi.Schema(
-#                         type=openapi.TYPE_OBJECT,
-#                         properties={
-#                             'total_questions': openapi.Schema(type=openapi.TYPE_INTEGER),
-#                             'total_marks': openapi.Schema(type=openapi.TYPE_INTEGER),
-#                             'time_minutes': openapi.Schema(type=openapi.TYPE_INTEGER),
-#                             'subjects_covered': openapi.Schema(
-#                                 type=openapi.TYPE_ARRAY,
-#                                 items=openapi.Schema(type=openapi.TYPE_INTEGER)
-#                             )
-#                         }
-#                     ),
-#                     'questions': openapi.Schema(
-#                         type=openapi.TYPE_ARRAY,
-#                         items=openapi.Schema(type=openapi.TYPE_OBJECT)
-#                     )
-#                 }
-#             )
-#         ),
-#         400: "Invalid input data",
-#         404: "Subject or chapter not found"
-#     },
-#     operation_description="Generate a custom test based on user-selected subjects, chapters, and number of questions.",
-#     operation_summary="Create Custom Test"
-# )
-# @api_view(['POST'])
-# def create_custom_test(request):
-#     '''
-#     Payload:
-#                 {
-#             "subjects": [
-#                 {
-#                 "subject_id": 1,
-#                 "chapters": [
-#                     {
-#                     "chapter_id": 1,
-#                     "num_questions": 5
-#                     }
-#                 ]
-#                 }
-#             ],
-#             "time_minutes": 30
-#             }
-#     '''
-#     serializer = CustomTestSerializer(data=request.data)
-#     if not serializer.is_valid():
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-#     data = serializer.validated_data
-#     selected_questions = []
-#     total_marks = 0
-#     stream = get_object_or_404(Streams, stream_name='IOE')  # Or make this configurable
-
-#     for subject_data in data['subjects']:
-#         subject = get_object_or_404(Subjects, id=subject_data['subject_id'])
-        
-#         for chapter_data in subject_data['chapters']:
-#             chapter = get_object_or_404(Chapters, id=chapter_data['chapter_id'], sub_id=subject)
-#             topics = Topics.objects.filter(chapter=chapter)
-            
-#             # Get random questions
-#             questions = HeroQuestions.objects.filter(
-#                 topic__in=topics,
-#                 stream=stream
-#             ).order_by('?')[:chapter_data['num_questions']]
-            
-#             if len(questions) < chapter_data['num_questions']:
-#                 return Response({
-#                     'error': f'Not enough questions for {subject.subject_name} - {chapter.chapter_name}'
-#                 }, status=status.HTTP_400_BAD_REQUEST)
-            
-#             selected_questions.extend(questions)
-#             total_marks += sum(q.marks for q in questions)
-
-#     serializer = HeroQuestionsWithoutAnswerSerializer(selected_questions, many=True)
-    
-#     return Response({
-#         'test_details': {
-#             'total_questions': len(selected_questions),
-#             'total_marks': total_marks,
-#             'time_minutes': data['time_minutes'],
-#             'subjects_covered': [s['subject_id'] for s in data['subjects']]
-#         },
-#         'questions': serializer.data
-#     })
-        
-
 
 
 @swagger_auto_schema(
@@ -293,17 +353,6 @@ def generate_mock_test(request):
                         description="List of questions for the test (without answers)"
                     )
 
-                    # Option B: Reference generated component schemas (BEST if available)
-                    # Check your /swagger.json or /schema endpoint to see if drf-yasg created these:
-                    # 'test_details': openapi.Schema(ref='#/components/schemas/GeneratedTestPaper'),
-                    # 'questions': openapi.Schema(
-                    #     type=openapi.TYPE_ARRAY,
-                    #     items=openapi.Schema(ref='#/components/schemas/HeroQuestionsWithoutAnswer')
-                    # )
-
-                    # Option C: Try passing the serializer directly (might work depending on drf-yasg version/config)
-                    # 'test_details': GeneratedTestPaperSerializer(),
-                    # 'questions': HeroQuestionsWithoutAnswerSerializer(many=True)
                 }
              )
             # --- End Simpler Schema Definition ---
@@ -451,6 +500,15 @@ def create_custom_test(request):
         'questions': questions_serializer.data 
     }, status=status.HTTP_201_CREATED) 
 
+def answers_match(user_ans, correct_ans):
+    """
+    Return True if two potentially nested JSON-compatible structures
+    are equivalent, regardless of key order or whitespace.
+    """
+    # dumps with sorted keys and no extra spaces
+    u = json.dumps(user_ans,    sort_keys=True, separators=(',', ':'))
+    c = json.dumps(correct_ans, sort_keys=True, separators=(',', ':'))
+    return u == c
 
 class TestSubmissionView(views.APIView):
     """
@@ -583,7 +641,13 @@ class TestSubmissionView(views.APIView):
 
             correct_answer = details['correct_answer']
             # Perform comparison (adjust if complex JSON comparison needed)
-            is_correct = (user_answer == correct_answer)
+            # is_correct = (user_answer == correct_answer)
+            import pprint
+
+            print("USER_ANSWER  >", type(user_answer), repr(user_answer))
+            print("CORRECT_ANSWER >", type(correct_answer), repr(correct_answer))
+
+            is_correct = answers_match(user_answer, correct_answer)
 
             if is_correct:
                 total_obtained_marks += details['marks']
@@ -608,21 +672,6 @@ class TestSubmissionView(views.APIView):
                     subjects_included=generated_test.subjects_included
                 )
 
-                # Create ResultQuestionLink entries
-                # result_links_to_create = []
-                # for result_data in processed_results:
-                #     result_links_to_create.append(
-                #         ResultQuestionLink(
-                #             result_id=test_history, # Link to the history instance
-                #             question_id=result_data['question_instance'], # Link to the question instance
-                #             user_answer=result_data['user_answer'],
-                #             is_correct=result_data['is_correct']
-                #         )
-                #     )
-                
-                # # Use bulk_create for efficiency
-                # if result_links_to_create:
-                #     ResultQuestionLink.objects.bulk_create(result_links_to_create)
                 result_links_to_create = []
             for result_data in processed_results:
                 # Get the marks for this question instance from the details map
@@ -861,30 +910,7 @@ class TopicPerformanceStatsView(BasePerformanceStatsView):
 # serializers.py
 
 # ... other serializers ...
-class SubjectPerformanceSerializer(BasePerformanceSerializer):
-    subject_id = serializers.IntegerField()
-    subject_name = serializers.CharField()
-    class Meta: # Add Meta for field reference in base view
-        fields = ['subject_id', 'subject_name', 'attempted', 'correct', 'total_marks_possible', 'marks_obtained', 'accuracy_percentage', 'score_percentage']
 
-class ChapterPerformanceSerializer(BasePerformanceSerializer):
-    chapter_id = serializers.IntegerField()
-    chapter_name = serializers.CharField()
-    # Example of including parent details if needed (adjust query/annotation accordingly)
-    # subject_id = serializers.IntegerField(read_only=True)
-    # subject_name = serializers.CharField(read_only=True)
-    class Meta: # Add Meta
-        fields = ['chapter_id', 'chapter_name', 'attempted', 'correct', 'total_marks_possible', 'marks_obtained', 'accuracy_percentage', 'score_percentage']
-
-class TopicPerformanceSerializer(BasePerformanceSerializer):
-    topic_id = serializers.IntegerField()
-    topic_name = serializers.CharField()
-    # chapter_id = serializers.IntegerField(read_only=True)
-    # chapter_name = serializers.CharField(read_only=True)
-    # subject_id = serializers.IntegerField(read_only=True)
-    # subject_name = serializers.CharField(read_only=True)
-    class Meta: # Add Meta
-        fields = ['topic_id', 'topic_name', 'attempted', 'correct', 'total_marks_possible', 'marks_obtained', 'accuracy_percentage', 'score_percentage']
 
 
 
