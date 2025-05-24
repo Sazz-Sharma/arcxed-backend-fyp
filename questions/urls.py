@@ -30,5 +30,7 @@ urlpatterns = [
     path('stats/by-chapter/', ChapterPerformanceStatsView.as_view(), name='chapter-stats'),
     path('stats/by-topic/', TopicPerformanceStatsView.as_view(), name='topic-stats'),
 
+    path('questions/similarity/', QuestionSimilarityAPIView.as_view(), name='question-similarity')
+
 ]
 

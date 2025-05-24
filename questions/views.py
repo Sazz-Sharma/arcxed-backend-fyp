@@ -75,7 +75,7 @@ class QuestionViewSet(viewsets.ModelViewSet): # For managing base Questions
     """
     queryset = Questions.objects.all().select_related('topic__chapter__sub_id').order_by('-id')
     serializer_class = QuestionsSerializer # Use your existing QuestionsSerializer
-    # permission_classes = [IsSuperUserOrReadOnly] # Apply permissions as needed
+    permission_classes = [IsSuperUser]
 
     # View-specific filtering (if you want it, otherwise remove filter_backends and filterset_fields)
     filter_backends = [DjangoFilterBackend]
@@ -120,98 +120,6 @@ class QuestionViewSet(viewsets.ModelViewSet): # For managing base Questions
         return super().destroy(request, *args, **kwargs)
 
 
-# class HeroQuestionViewSet(viewsets.ModelViewSet):
-#     """
-#     API endpoint for managing Hero Questions (questions for tests).
-#     Supports CRUD and filtering by subject, chapter, topic, stream, marks, and base question ID.
-#     """
-#     queryset = HeroQuestions.objects.select_related(
-#         'question__topic', 'topic__chapter__sub_id', 'stream' # Optimize queries
-#     ).all().order_by('-id')
-#     # permission_classes = [IsSuperUserOrReadOnly] # Apply permissions as needed
-
-#     # --- View-specific filtering and pagination ---
-#     # This ensures only this ViewSet uses these settings.
-#     filter_backends = [DjangoFilterBackend] # Enable django-filter
-#     filterset_class = HeroQuestionFilter    # Use the custom filter
-
-#     # If you want pagination ONLY for this endpoint:
-#     # from rest_framework.pagination import PageNumberPagination
-#     # class StandardResultsSetPagination(PageNumberPagination):
-#     #     page_size = 10
-#     #     page_size_query_param = 'page_size'
-#     #     max_page_size = 100
-#     # pagination_class = StandardResultsSetPagination # Uncomment to enable pagination for this viewset
-
-#     def get_serializer_class(self):
-#         if self.action in ['create', 'update', 'partial_update']:
-#             return HeroQuestionCreateUpdateSerializer
-#         # Use your existing HeroQuestionsSerializer for list/retrieve
-#         return HeroQuestionsSerializer
-
-#     @swagger_auto_schema(
-#         operation_summary="List Hero Questions",
-#         responses={200: HeroQuestionsSerializer(many=True)}
-#         # drf-yasg will automatically pick up parameters from filterset_class
-#     )
-#     def list(self, request, *args, **kwargs):
-#         return super().list(request, *args, **kwargs)
-
-#     @swagger_auto_schema(
-#         operation_summary="Create a new Hero Question",
-#         request_body=HeroQuestionCreateUpdateSerializer,
-#         responses={
-#             201: HeroQuestionsSerializer(), # Show using the read serializer
-#             400: "Validation Error"
-#         }
-#     )
-#     def create(self, request, *args, **kwargs):
-#         serializer = self.get_serializer(data=request.data)
-#         serializer.is_valid(raise_exception=True)
-#         instance = serializer.save()
-#         # Return the representation using your existing HeroQuestionsSerializer for reads
-#         read_serializer = HeroQuestionsSerializer(instance, context={'request': request})
-#         headers = self.get_success_headers(read_serializer.data)
-#         return Response(read_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
-#     @swagger_auto_schema(
-#         operation_summary="Retrieve a specific Hero Question",
-#         responses={200: HeroQuestionsSerializer(), 404: "Not Found"}
-#     )
-#     def retrieve(self, request, *args, **kwargs):
-#         return super().retrieve(request, *args, **kwargs)
-
-#     @swagger_auto_schema(
-#         operation_summary="Update a Hero Question",
-#         request_body=HeroQuestionCreateUpdateSerializer,
-#         responses={200: HeroQuestionsSerializer(), 400: "Validation Error", 404: "Not Found"}
-#     )
-#     def update(self, request, *args, **kwargs):
-#         partial = kwargs.pop('partial', False)
-#         instance = self.get_object()
-#         serializer = self.get_serializer(instance, data=request.data, partial=partial)
-#         serializer.is_valid(raise_exception=True)
-#         updated_instance = serializer.save()
-#         read_serializer = HeroQuestionsSerializer(updated_instance, context={'request': request})
-#         return Response(read_serializer.data)
-
-#     @swagger_auto_schema(
-#         operation_summary="Partially update a Hero Question",
-#         request_body=HeroQuestionCreateUpdateSerializer,
-#         responses={200: HeroQuestionsSerializer(), 400: "Validation Error", 404: "Not Found"}
-#     )
-#     def partial_update(self, request, *args, **kwargs):
-#         kwargs['partial'] = True # Ensure partial update logic is triggered
-#         return self.update(request, *args, **kwargs) # Reuse the update method
-
-#     @swagger_auto_schema(
-#         operation_summary="Delete a Hero Question",
-#         responses={204: "No Content", 404: "Not Found"}
-#     )
-#     def destroy(self, request, *args, **kwargs):
-#         return super().destroy(request, *args, **kwargs)
-    
-
 class CombinedHeroQuestionViewSet(viewsets.ModelViewSet):
     """
     API endpoint for managing Hero Questions along with their base Question data.
@@ -226,7 +134,7 @@ class CombinedHeroQuestionViewSet(viewsets.ModelViewSet):
     (e.g., in GET requests or after a POST/PUT) will use your existing
     TopicsSerializer and StreamsSerializer.
     """
-
+    permission_classes = [IsSuperUser]
     # Optimized queryset:
     # Fetches related objects in a more efficient way to reduce DB queries.
     # This assumes HeroQuestions.topic and Questions.topic are FKs to Topics,
@@ -1060,14 +968,61 @@ class TopicPerformanceStatsView(BasePerformanceStatsView):
 
 
 
+from questions.faiss_engine.question_vectorizer import _qv
 
+class QuestionSimilarityInputSerializer(serializers.Serializer):
+    question = serializers.CharField(help_text="Text to check for similarity")
 
-# --- Add Meta classes to performance serializers ---
-# serializers.py
+class QuestionSimilarityAPIView(APIView):
+    @swagger_auto_schema(
+        operation_summary='Retrieve similar questions',
+        request_body=QuestionSimilarityInputSerializer,
+        responses={
+            200: openapi.Response(
+                description='List of similar questions with full data and scores',
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'similar': openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Schema(
+                                type=openapi.TYPE_OBJECT,
+                                properties={
+                                    'question': openapi.Schema(type=openapi.TYPE_OBJECT),
+                                    'score': openapi.Schema(type=openapi.TYPE_NUMBER, format=openapi.FORMAT_FLOAT)
+                                }
+                            )
+                        )
+                    }
+                )
+            ),
+            400: 'Bad Request'
+        }
+    )
+    def post(self, request):
+        serializer = QuestionSimilarityInputSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# ... other serializers ...
+        question_text = serializer.validated_data['question']
 
+        # Run similarity pipeline
+        raw_results = _qv.query(question_text, filter_k=50, rerank_k=5)
 
+        # Build full response items
+        similar = []
+        for qid, _, score in raw_results:
+            try:
+                question_obj = Questions.objects.get(id=qid)
+                serialized = QuestionsWithoutAnswerSerializer(question_obj)
+                similar.append({
+                    'question': serialized.data,
+                    'score': score
+                })
+            except Questions.DoesNotExist:
+                continue
+
+        return Response({'similar': similar}, status=status.HTTP_200_OK)
 
 
 
