@@ -12,7 +12,8 @@ router.register(r'chapters', ChaptersViewSet, basename='chapters')
 router.register(r'topics', TopicsViewSet, basename='topics')
 
 router.register(r'questions-base', QuestionViewSet, basename='question-base')
-router.register(r'hero-questions', HeroQuestionViewSet, basename='hero-question')
+# router.register(r'hero-questions', HeroQuestionViewSet, basename='hero-question')
+router.register(r'combined-hero-questions', CombinedHeroQuestionViewSet, basename='combinedheroquestion')
 
 
 urlpatterns = [

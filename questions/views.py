@@ -120,96 +120,252 @@ class QuestionViewSet(viewsets.ModelViewSet): # For managing base Questions
         return super().destroy(request, *args, **kwargs)
 
 
-class HeroQuestionViewSet(viewsets.ModelViewSet):
+# class HeroQuestionViewSet(viewsets.ModelViewSet):
+#     """
+#     API endpoint for managing Hero Questions (questions for tests).
+#     Supports CRUD and filtering by subject, chapter, topic, stream, marks, and base question ID.
+#     """
+#     queryset = HeroQuestions.objects.select_related(
+#         'question__topic', 'topic__chapter__sub_id', 'stream' # Optimize queries
+#     ).all().order_by('-id')
+#     # permission_classes = [IsSuperUserOrReadOnly] # Apply permissions as needed
+
+#     # --- View-specific filtering and pagination ---
+#     # This ensures only this ViewSet uses these settings.
+#     filter_backends = [DjangoFilterBackend] # Enable django-filter
+#     filterset_class = HeroQuestionFilter    # Use the custom filter
+
+#     # If you want pagination ONLY for this endpoint:
+#     # from rest_framework.pagination import PageNumberPagination
+#     # class StandardResultsSetPagination(PageNumberPagination):
+#     #     page_size = 10
+#     #     page_size_query_param = 'page_size'
+#     #     max_page_size = 100
+#     # pagination_class = StandardResultsSetPagination # Uncomment to enable pagination for this viewset
+
+#     def get_serializer_class(self):
+#         if self.action in ['create', 'update', 'partial_update']:
+#             return HeroQuestionCreateUpdateSerializer
+#         # Use your existing HeroQuestionsSerializer for list/retrieve
+#         return HeroQuestionsSerializer
+
+#     @swagger_auto_schema(
+#         operation_summary="List Hero Questions",
+#         responses={200: HeroQuestionsSerializer(many=True)}
+#         # drf-yasg will automatically pick up parameters from filterset_class
+#     )
+#     def list(self, request, *args, **kwargs):
+#         return super().list(request, *args, **kwargs)
+
+#     @swagger_auto_schema(
+#         operation_summary="Create a new Hero Question",
+#         request_body=HeroQuestionCreateUpdateSerializer,
+#         responses={
+#             201: HeroQuestionsSerializer(), # Show using the read serializer
+#             400: "Validation Error"
+#         }
+#     )
+#     def create(self, request, *args, **kwargs):
+#         serializer = self.get_serializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         instance = serializer.save()
+#         # Return the representation using your existing HeroQuestionsSerializer for reads
+#         read_serializer = HeroQuestionsSerializer(instance, context={'request': request})
+#         headers = self.get_success_headers(read_serializer.data)
+#         return Response(read_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+#     @swagger_auto_schema(
+#         operation_summary="Retrieve a specific Hero Question",
+#         responses={200: HeroQuestionsSerializer(), 404: "Not Found"}
+#     )
+#     def retrieve(self, request, *args, **kwargs):
+#         return super().retrieve(request, *args, **kwargs)
+
+#     @swagger_auto_schema(
+#         operation_summary="Update a Hero Question",
+#         request_body=HeroQuestionCreateUpdateSerializer,
+#         responses={200: HeroQuestionsSerializer(), 400: "Validation Error", 404: "Not Found"}
+#     )
+#     def update(self, request, *args, **kwargs):
+#         partial = kwargs.pop('partial', False)
+#         instance = self.get_object()
+#         serializer = self.get_serializer(instance, data=request.data, partial=partial)
+#         serializer.is_valid(raise_exception=True)
+#         updated_instance = serializer.save()
+#         read_serializer = HeroQuestionsSerializer(updated_instance, context={'request': request})
+#         return Response(read_serializer.data)
+
+#     @swagger_auto_schema(
+#         operation_summary="Partially update a Hero Question",
+#         request_body=HeroQuestionCreateUpdateSerializer,
+#         responses={200: HeroQuestionsSerializer(), 400: "Validation Error", 404: "Not Found"}
+#     )
+#     def partial_update(self, request, *args, **kwargs):
+#         kwargs['partial'] = True # Ensure partial update logic is triggered
+#         return self.update(request, *args, **kwargs) # Reuse the update method
+
+#     @swagger_auto_schema(
+#         operation_summary="Delete a Hero Question",
+#         responses={204: "No Content", 404: "Not Found"}
+#     )
+#     def destroy(self, request, *args, **kwargs):
+#         return super().destroy(request, *args, **kwargs)
+    
+
+class CombinedHeroQuestionViewSet(viewsets.ModelViewSet):
     """
-    API endpoint for managing Hero Questions (questions for tests).
-    Supports CRUD and filtering by subject, chapter, topic, stream, marks, and base question ID.
+    API endpoint for managing Hero Questions along with their base Question data.
+
+    - POST: Creates a Hero Question and its underlying base Question in one request.
+    - GET: Retrieves Hero Questions with full details, including nested Question,
+           Topic (for HeroQuestion), and Stream objects.
+    - PUT/PATCH: Updates a Hero Question and/or its underlying base Question.
+    - DELETE: Deletes a Hero Question (and its base Question if CASCADE is set).
+
+    The representation of related Topic and Stream objects in API responses
+    (e.g., in GET requests or after a POST/PUT) will use your existing
+    TopicsSerializer and StreamsSerializer.
     """
+
+    # Optimized queryset:
+    # Fetches related objects in a more efficient way to reduce DB queries.
+    # This assumes HeroQuestions.topic and Questions.topic are FKs to Topics,
+    # and Topics.chapter is an FK to Chapters.
     queryset = HeroQuestions.objects.select_related(
-        'question__topic', 'topic__chapter__sub_id', 'stream' # Optimize queries
-    ).all().order_by('-id')
-    # permission_classes = [IsSuperUserOrReadOnly] # Apply permissions as needed
-
-    # --- View-specific filtering and pagination ---
-    # This ensures only this ViewSet uses these settings.
-    filter_backends = [DjangoFilterBackend] # Enable django-filter
-    filterset_class = HeroQuestionFilter    # Use the custom filter
-
-    # If you want pagination ONLY for this endpoint:
-    # from rest_framework.pagination import PageNumberPagination
-    # class StandardResultsSetPagination(PageNumberPagination):
-    #     page_size = 10
-    #     page_size_query_param = 'page_size'
-    #     max_page_size = 100
-    # pagination_class = StandardResultsSetPagination # Uncomment to enable pagination for this viewset
+        'topic',                    # HeroQuestions.topic (ForeignKey to Topics)
+        'topic__chapter',           # HeroQuestions.topic.chapter (if Topics.chapter is FK to Chapters)
+        'stream',                   # HeroQuestions.stream (ForeignKey to Streams)
+        'question',                 # HeroQuestions.question (ForeignKey to Questions)
+        'question__topic',          # HeroQuestions.question.topic (Questions.topic, FK to Topics)
+        'question__topic__chapter'  # HeroQuestions.question.topic.chapter
+    ).all()
 
     def get_serializer_class(self):
-        if self.action in ['create', 'update', 'partial_update']:
-            return HeroQuestionCreateUpdateSerializer
-        # Use your existing HeroQuestionsSerializer for list/retrieve
-        return HeroQuestionsSerializer
+        """
+        Dynamically selects the serializer class based on the action.
+        - For 'list' and 'retrieve' (read actions): HeroQuestionsReadOnlySerializer.
+        - For 'create', 'update', 'partial_update' (write actions): CombinedHeroQuestionCreateUpdateSerializer.
+        """
+        if self.action in ['list', 'retrieve']:
+            return HeroQuestionsReadOnlySerializer
+        # For 'create', 'update', 'partial_update'
+        return CombinedHeroQuestionCreateUpdateSerializer
 
     @swagger_auto_schema(
-        operation_summary="List Hero Questions",
-        responses={200: HeroQuestionsSerializer(many=True)}
-        # drf-yasg will automatically pick up parameters from filterset_class
+        operation_summary="List all Combined Hero Questions",
+        operation_description=(
+            "Retrieves a list of all Hero Questions. "
+            "Each item includes the HeroQuestion's own topic and stream, "
+            "and the nested base Question with its own topic. "
+            "Representations of 'topic' and 'stream' objects use your existing serializers."
+        ),
+        responses={200: HeroQuestionsReadOnlySerializer(many=True)}
     )
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
     @swagger_auto_schema(
-        operation_summary="Create a new Hero Question",
-        request_body=HeroQuestionCreateUpdateSerializer,
-        responses={
-            201: HeroQuestionsSerializer(), # Show using the read serializer
-            400: "Validation Error"
-        }
-    )
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        instance = serializer.save()
-        # Return the representation using your existing HeroQuestionsSerializer for reads
-        read_serializer = HeroQuestionsSerializer(instance, context={'request': request})
-        headers = self.get_success_headers(read_serializer.data)
-        return Response(read_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
-    @swagger_auto_schema(
-        operation_summary="Retrieve a specific Hero Question",
-        responses={200: HeroQuestionsSerializer(), 404: "Not Found"}
+        operation_summary="Retrieve a Combined Hero Question",
+        operation_description=(
+            "Retrieves a specific Hero Question by its ID. "
+            "Includes the HeroQuestion's own topic and stream, "
+            "and the nested base Question with its own topic. "
+            "Representations of 'topic' and 'stream' objects use your existing serializers."
+        ),
+        responses={200: HeroQuestionsReadOnlySerializer()}
     )
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
 
     @swagger_auto_schema(
-        operation_summary="Update a Hero Question",
-        request_body=HeroQuestionCreateUpdateSerializer,
-        responses={200: HeroQuestionsSerializer(), 400: "Validation Error", 404: "Not Found"}
+        operation_summary="Create a new Combined Hero Question",
+        operation_description=(
+            "Creates a new Hero Question and its underlying base Question simultaneously. "
+            "You need to provide:\n"
+            "- For the base Question: `question_text`, `question_options` (JSON), `question_answer` (JSON), "
+            "and optionally `question_base_topic_id` (ID of the Topic for the base Question).\n"
+            "- For the HeroQuestion: `hero_topic_id` (ID of the Topic for the HeroQuestion context), "
+            "`stream_id` (ID of the Stream), and `marks`.\n"
+            "The response will be the newly created HeroQuestion, with nested objects formatted "
+            "using your existing Topic/Stream serializers via HeroQuestionsReadOnlySerializer."
+        ),
+        request_body=CombinedHeroQuestionCreateUpdateSerializer,
+        responses={
+            201: HeroQuestionsReadOnlySerializer(), # Response uses read-only serializer
+            400: "Validation Error: Check input data and required fields."
+        }
+    )
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer) # Calls serializer.save() -> serializer.create()
+        # serializer.data will use CombinedHeroQuestionCreateUpdateSerializer's to_representation,
+        # which in turn uses HeroQuestionsReadOnlySerializer.
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    @swagger_auto_schema(
+        operation_summary="Update a Combined Hero Question (PUT)",
+        operation_description=(
+            "Updates an existing Hero Question and its underlying base Question. "
+            "Requires all fields expected by `CombinedHeroQuestionCreateUpdateSerializer` for a full update.\n"
+            "The response will show the updated object, with nested objects formatted "
+            "using your existing Topic/Stream serializers via HeroQuestionsReadOnlySerializer."
+        ),
+        request_body=CombinedHeroQuestionCreateUpdateSerializer,
+        responses={
+            200: HeroQuestionsReadOnlySerializer(), # Response uses read-only serializer
+            400: "Validation Error: Check input data and required fields."
+        }
     )
     def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
+        partial = kwargs.pop('partial', False) # For PUT, partial is False
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        updated_instance = serializer.save()
-        read_serializer = HeroQuestionsSerializer(updated_instance, context={'request': request})
-        return Response(read_serializer.data)
+        self.perform_update(serializer) # Calls serializer.save() -> serializer.update()
+        # serializer.data will use to_representation.
+        return Response(serializer.data)
 
     @swagger_auto_schema(
-        operation_summary="Partially update a Hero Question",
-        request_body=HeroQuestionCreateUpdateSerializer,
-        responses={200: HeroQuestionsSerializer(), 400: "Validation Error", 404: "Not Found"}
+        operation_summary="Partially update a Combined Hero Question (PATCH)",
+        operation_description=(
+            "Partially updates an existing Hero Question and/or its underlying base Question. "
+            "Provide only the fields you want to change.\n"
+            "The response will show the updated object, with nested objects formatted "
+            "using your existing Topic/Stream serializers via HeroQuestionsReadOnlySerializer."
+        ),
+        request_body=CombinedHeroQuestionCreateUpdateSerializer, # Input is still based on this
+        responses={
+            200: HeroQuestionsReadOnlySerializer(), # Response uses read-only serializer
+            400: "Validation Error: Check input data."
+        }
     )
     def partial_update(self, request, *args, **kwargs):
-        kwargs['partial'] = True # Ensure partial update logic is triggered
-        return self.update(request, *args, **kwargs) # Reuse the update method
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs) # Reuses the update logic
 
     @swagger_auto_schema(
-        operation_summary="Delete a Hero Question",
-        responses={204: "No Content", 404: "Not Found"}
+        operation_summary="Delete a Combined Hero Question",
+        operation_description=(
+            "Deletes a Hero Question by its ID. "
+            "If `HeroQuestions.question` has `on_delete=models.CASCADE`, "
+            "the associated base Question will also be deleted."
+        ),
+        responses={
+            204: "No Content: Successfully deleted.",
+            404: "Not Found: HeroQuestion with the given ID does not exist."
+        }
     )
-    def destroy(self, request, *args, **kwargs):
-        return super().destroy(request, *args, **kwargs)
+    def perform_destroy(self, instance):
+        question_to_check = instance.question
+        # Delete the HeroQuestion instance first
+        super().perform_destroy(instance)
+
+        # Now check if the Question is orphaned
+        if question_to_check:
+            if not question_to_check.hero_instances.exists():
+                question_to_check.delete()
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
