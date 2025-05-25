@@ -20,10 +20,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
-
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-_nc21qossj#a)xe)$@#2v=749o3)kv5j3jfx3kor#@h@q3c+45'
 
@@ -62,6 +58,7 @@ INSTALLED_APPS = [
     "accounts",
     "questions", 
     "socketroom", 
+    'leaderboard',
             
 ]
 
@@ -200,8 +197,11 @@ CORS_ALLOW_HEADERS = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # your frontend
-    "https://ae53-111-119-49-56.ngrok-free.app",  # your backend via ngrok
+    "http://localhost:3000",  
+    "https://ae53-111-119-49-56.ngrok-free.app",
+    "192.168.1.68:3000",  
+    "192.168.1.71:3000",
+    "192.168.1.73:3000",
 ]
 
 CORS_ALLOW_CREDENTIALS = True

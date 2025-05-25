@@ -1,0 +1,21 @@
+mcq_analysis:
+  description: |
+    Analyze the MCQ with inputs:
+      - {question}: the question text
+      - {options}: mapping of "A"–"D" to option strings
+      - {correct}: the label of the known correct option
+    Produce:
+      - subject: the broad field (e.g., Physics)
+      - topic: the specific chapter or area (e.g., Thermodynamics)
+      - concept: one-line summary of what’s being tested
+      - correct_answer: repeat the correct label
+      - explanation: 2–3 line conceptual justification
+  expected_output: >
+    A JSON object with keys:
+      subject: string,
+      topic: string,
+      concept: string,
+      correct_answer: "A"|"B"|"C"|"D",
+      explanation: string
+  agent: mcq_assistant
+  output_file: output/mcq_analysis.json

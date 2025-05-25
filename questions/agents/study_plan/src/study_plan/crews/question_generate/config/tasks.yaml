@@ -1,0 +1,11 @@
+generate_questions_task:
+  description: |
+    Generate two conceptual chatbot-friendly diagnostic questions per chapter for each subject using:
+    - {current_level}: the user's self-rated chapter-level knowledge
+    - {syllabus}: syllabus weightages (mark1 and mark2 per chapter)
+
+    Ensure questions test understanding, not calculation. Suitable for answering through text, not pen-and-paper.
+  expected_output: >
+    A JSON object with 2 conceptual questions per chapter under each subject.
+  agent: question_generator
+  output_file: output/question_gen.json

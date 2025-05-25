@@ -156,6 +156,7 @@ class CombinedHeroQuestionCreateUpdateSerializer(serializers.ModelSerializer):
         which in turn uses YOUR TopicsSerializer and StreamsSerializer.
         """
         return HeroQuestionsReadOnlySerializer(instance, context=self.context).data
+    
         
 
 class QuestionsWithoutAnswerSerializer(serializers.ModelSerializer):
@@ -473,3 +474,51 @@ class HeroQuestionWritePayloadSerializer(serializers.Serializer):
 #         instance.marks = validated_data.get('marks', instance.marks)
 #         instance.save()
 #         return instance
+
+
+
+
+
+
+
+class CurrentLevelSerializer(serializers.Serializer): # Helper for shared current_level structure
+    Subject = serializers.CharField()
+    Chapters = serializers.DictField(child=serializers.IntegerField())
+
+class GenerateQuestionRequestSerializer(serializers.Serializer):
+    current_level = CurrentLevelSerializer(many=True)
+    # syllabus = serializers.ListField(child=serializers.DictField(), required=False) # Optional: to override default
+
+class AnsweredQuestionSerializer(serializers.Serializer):
+    subject = serializers.CharField()
+    question = serializers.CharField()
+    answer = serializers.CharField() # User's answer
+
+class CreateStudyPlanRequestSerializer(serializers.Serializer):
+    current_level = CurrentLevelSerializer(many=True)
+    answered_questions = AnsweredQuestionSerializer(many=True)
+    # syllabus = serializers.ListField(child=serializers.DictField(), required=False) # Optional
+
+class ExplainAnswerRequestSerializer(serializers.Serializer):
+    question_text = serializers.CharField()
+    options = serializers.ListField(child=serializers.CharField())
+    correct_answer = serializers.CharField()
+    # question_id = serializers.IntegerField(required=False) # If you want to support fetching from DB
+
+class EvaluateUserRequestSerializer(serializers.Serializer):
+    evaluation_type = serializers.ChoiceField(choices=["overall", "subject", "chapter", "topic"])
+    performance_data = TopicPerformanceSerializer(many=True) # Using your TopicPerformanceSerializer
+
+# --- Response Serializers for API Endpoints ---
+
+class GenerateQuestionResponseSerializer(serializers.Serializer):
+    generated_questions = serializers.ListField(child=serializers.DictField()) # Assuming questions are dicts
+
+class CreateStudyPlanResponseSerializer(serializers.Serializer):
+    study_plan_output = serializers.CharField()
+
+class ExplainAnswerResponseSerializer(serializers.Serializer):
+    explanation = serializers.CharField()
+
+class EvaluateUserResponseSerializer(serializers.Serializer):
+    evaluation = serializers.CharField()

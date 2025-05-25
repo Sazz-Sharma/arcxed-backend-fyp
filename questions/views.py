@@ -1026,5 +1026,173 @@ class QuestionSimilarityAPIView(APIView):
 
 
 
+# try:
+#     from study_plan.main import (
+#         GenerateQuestionFlow,
+#         MakeStudyPlanFlow,
+#         ExplainAnswerFlow,
+#         EvaluateUserFlow,
+#         SYLLABUS # Import the SYLLABUS constant
+#     )
+#     print("Successfully imported study_plan flows and SYLLABUS constant.")
+# except ImportError as e:
+#     print(e)
+#     # Fallback for local testing or if paths are set up differently, e.g. src is in PYTHONPATH
+#     # This is less robust for deployment.
+#     print(f"ImportError: {e}. Attempting alternative import assuming 'study_plan' is in PYTHONPATH.")
+#     # from study_plan.main import (
+#     #     GenerateQuestionFlow,
+#     #     MakeStudyPlanFlow,
+#     #     ExplainAnswerFlow,
+#     #     EvaluateUserFlow,
+#     #     SYLLABUS
+#     # )
+from study_plan.main import (
+        GenerateQuestionFlow,
+        MakeStudyPlanFlow,
+        ExplainAnswerFlow,
+        EvaluateUserFlow,
+        SYLLABUS # Import the SYLLABUS constant
+    )
+
+from .serializers import (
+    GenerateQuestionRequestSerializer, GenerateQuestionResponseSerializer,
+    CreateStudyPlanRequestSerializer, CreateStudyPlanResponseSerializer,
+    ExplainAnswerRequestSerializer, ExplainAnswerResponseSerializer,
+    EvaluateUserRequestSerializer, EvaluateUserResponseSerializer
+)
 
 
+
+
+class GenerateQuestionsAPIView(APIView):
+    """
+    Generates tailored questions for a user based on their current proficiency levels.
+    The AI analyzes the user's `current_level` across subjects and chapters to create
+    questions that are appropriately challenging and relevant to their learning needs.
+    """
+    @swagger_auto_schema(
+        operation_summary="Generate Assessment Questions",
+        operation_description="""Takes the user's current understanding level per subject/chapter and generates a set of questions.
+        The syllabus is typically predefined in the system, but can be overridden if needed (though not implemented in this request serializer version).""",
+        request_body=GenerateQuestionRequestSerializer,
+        responses={
+            200: GenerateQuestionResponseSerializer,
+            400: "Bad Request - Invalid input data"
+        },
+        tags=['Assessment & Study Plan']
+    )
+    def post(self, request, *args, **kwargs):
+        serializer = GenerateQuestionRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            data = serializer.validated_data
+            flow = GenerateQuestionFlow()
+            result_state = flow.generate_question_task(
+                current_level=data['current_level'],
+                syllabus=SYLLABUS # Or data.get('syllabus', SYLLABUS) if you implement override
+            )
+            response_serializer = GenerateQuestionResponseSerializer(data=result_state.dict()) # Use .dict() for Pydantic models
+            if response_serializer.is_valid(): # Validate response serialization if complex
+                 return Response(response_serializer.data, status=status.HTTP_200_OK)
+            return Response(response_serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR) # Should not happen if Pydantic model matches serializer
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class CreateStudyPlanAPIView(APIView):
+    """
+    Creates a personalized study plan for the user.
+    This plan is based on their `current_level` of understanding and their performance
+    on a set of `answered_questions`. The AI identifies areas needing improvement
+    and suggests a path forward.
+    """
+    @swagger_auto_schema(
+        operation_summary="Create Personalized Study Plan",
+        operation_description="""Generates a study plan based on the user's current knowledge level and their answers to a set of questions.
+        The AI will analyze these inputs to suggest topics to focus on.""",
+        request_body=CreateStudyPlanRequestSerializer,
+        responses={
+            200: CreateStudyPlanResponseSerializer,
+            400: "Bad Request - Invalid input data"
+        },
+        tags=['Assessment & Study Plan']
+    )
+    def post(self, request, *args, **kwargs):
+        serializer = CreateStudyPlanRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            data = serializer.validated_data
+            flow = MakeStudyPlanFlow()
+            result_state = flow.make_study_plan_task(
+                current_level=data['current_level'],
+                answered_questions=data['answered_questions'],
+                syllabus=SYLLABUS # Or data.get('syllabus', SYLLABUS)
+            )
+            response_serializer = CreateStudyPlanResponseSerializer(data=result_state.dict())
+            if response_serializer.is_valid():
+                return Response(response_serializer.data, status=status.HTTP_200_OK)
+            return Response(response_serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ExplainAnswerAPIView(APIView):
+    """
+    Provides a detailed explanation for a specific question.
+    Given the `question_text`, `options`, and the `correct_answer`, the AI generates
+    an explanation to help the user understand the underlying concepts and why the
+    answer is correct.
+    """
+    @swagger_auto_schema(
+        operation_summary="Explain an Answer",
+        operation_description="Provides an AI-generated explanation for a given question, its options, and the correct answer.",
+        request_body=ExplainAnswerRequestSerializer,
+        responses={
+            200: ExplainAnswerResponseSerializer,
+            400: "Bad Request - Invalid input data"
+            # 404: "Not Found - If fetching question by ID and not found" (if you implement ID fetching)
+        },
+        tags=['Learning Tools']
+    )
+    def post(self, request, *args, **kwargs):
+        serializer = ExplainAnswerRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            data = serializer.validated_data
+            flow = ExplainAnswerFlow()
+            result_state = flow.explain_answer_task(
+                question=data['question_text'],
+                options=data['options'],
+                correct_answer=data['correct_answer']
+            )
+            response_serializer = ExplainAnswerResponseSerializer(data=result_state.dict())
+            if response_serializer.is_valid():
+                return Response(response_serializer.data, status=status.HTTP_200_OK)
+            return Response(response_serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class EvaluateUserAPIView(APIView):
+    """
+    Evaluates user performance based on provided data.
+    The `evaluation_type` (e.g., 'topic', 'overall') determines the scope of analysis.
+    The `performance_data` contains metrics like attempts, corrects, and scores.
+    The AI provides an assessment of this performance.
+    """
+    @swagger_auto_schema(
+        operation_summary="Evaluate User Performance",
+        operation_description="Analyzes user performance data (e.g., scores, accuracy per topic) and provides an AI-generated evaluation.",
+        request_body=EvaluateUserRequestSerializer,
+        responses={
+            200: EvaluateUserResponseSerializer,
+            400: "Bad Request - Invalid input data"
+        },
+        tags=['User Performance']
+    )
+    def post(self, request, *args, **kwargs):
+        serializer = EvaluateUserRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            data = serializer.validated_data
+            flow = EvaluateUserFlow()
+            result_state = flow.evaluate_user_task(
+                evaluation_type=data['evaluation_type'],
+                performance_data=data['performance_data']
+            )
+            response_serializer = EvaluateUserResponseSerializer(data=result_state.dict())
+            if response_serializer.is_valid():
+                return Response(response_serializer.data, status=status.HTTP_200_OK)
+            return Response(response_serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

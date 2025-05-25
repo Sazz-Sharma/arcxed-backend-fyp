@@ -30,7 +30,14 @@ urlpatterns = [
     path('stats/by-chapter/', ChapterPerformanceStatsView.as_view(), name='chapter-stats'),
     path('stats/by-topic/', TopicPerformanceStatsView.as_view(), name='topic-stats'),
 
-    path('questions/similarity/', QuestionSimilarityAPIView.as_view(), name='question-similarity')
+    path('questions/similarity/', QuestionSimilarityAPIView.as_view(), name='question-similarity'),
+
+
+
+    path('crew/study-plan/generate-questions/', GenerateQuestionsAPIView.as_view(), name='generate_questions'),
+    path('crew/study-plan/create/', CreateStudyPlanAPIView.as_view(), name='create_study_plan'),
+    path('crew/questions/explain-answer/', ExplainAnswerAPIView.as_view(), name='explain_answer'),
+    path('crew/user/evaluate-performance/', EvaluateUserAPIView.as_view(), name='evaluate_user_performance'),
 
 ]
 

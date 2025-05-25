@@ -2,7 +2,8 @@
 
 import os
 import django # 1. Import django
-
+import sys
+sys.path.append(r'd:\arcxed\arcxed-backend-fyp\questions\agents\study_plan\src')
 # 2. Set the default settings module environment variable
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings') # <-- Make sure 'core.settings' matches your project
 

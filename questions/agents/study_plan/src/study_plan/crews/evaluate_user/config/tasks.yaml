@@ -1,0 +1,24 @@
+# tasks.yaml
+performance_analysis_task:
+  description: |
+    Analyze performance based on:
+      - {type}: one of overall, subject, chapter, topic  
+      - {data}: the JSON object or array of performance stats for that level  
+
+    Branch on {type}:
+      • overall → summarize total_tests_taken, total_questions_attempted,
+        overall_accuracy_percentage, overall_score_percentage + high-level feedback  
+      • subject → for each subject object, call out strengths (accuracy ≥ 80%) and
+        weaknesses (< 50%), then bullet insights  
+      • chapter → same as subject but at chapter level  
+      • topic   → same as subject but at topic level  
+
+    Return a JSON with keys: level, summary, insights, recommendations.
+  expected_output: >
+    A JSON object with:
+      level:          string ("overall"|"subject"|"chapter"|"topic")
+      summary:        string
+      insights:       array of strings
+      recommendations: string
+  agent: performance_analyzer
+  output_file: output/performance_analysis.json

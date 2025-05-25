@@ -1,0 +1,19 @@
+evaluate_answers_task:
+  description: |
+    Using the user's answers and the original questions, generate a subject-level (not chapter-level) understanding score (0–10).
+    Consider {questions} while estimating accuracy and reasoning in each response.
+  expected_output: >
+    A list of subjects with their respective understanding scores.
+  agent: answer_evaluator
+  allow_delegation: true
+
+generate_study_plan_task:
+  description: |
+    Based on the user's evaluated subject-wise scores and the {syllabus} chapter breakdown:
+    - Suggest a chapter-wise plan including time to study, learning goals, resources, and revision deadlines.
+    - Compare chapter importance in syllabus and estimated confidence based on subject score.
+  expected_output: >
+    A JSON object with per-chapter recommendations including:
+    chapter, priority, tip, time_to_study_per_week, user_confidence, recommended_mode, revise_by, learning_goals, and resources.
+  agent: study_planner
+  
