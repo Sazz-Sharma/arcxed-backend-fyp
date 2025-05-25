@@ -29,69 +29,68 @@ djangorestframework==3.15.2
 djangorestframework_simplejwt==5.4.0
 drf-yasg==1.21.8
 faiss-cpu==1.11.0
-filelock @ file:///home/conda/feedstock_root/build_artifacts/filelock_1741969488311/work
-frozenlist @ file:///D:/bld/frozenlist_1746635344657/work
-fsspec @ file:///home/conda/feedstock_root/build_artifacts/fsspec_1747831371740/work
+filelock 
+frozenlist 
+fsspec 
 google-auth==2.38.0
 google-auth-httplib2==0.2.0
 google-auth-oauthlib==1.2.1
-h2 @ file:///home/conda/feedstock_root/build_artifacts/h2_1738578511449/work
-hpack @ file:///home/conda/feedstock_root/build_artifacts/hpack_1737618293087/work
+h2 
+hpack
 httplib2==0.22.0
-huggingface_hub @ file:///home/conda/feedstock_root/build_artifacts/huggingface_hub_1747670838042/work
-hyperframe @ file:///home/conda/feedstock_root/build_artifacts/hyperframe_1737618333194/work
+huggingface_hub 
+hyperframe 
 hyperlink==21.0.0
-idna @ file:///home/conda/feedstock_root/build_artifacts/idna_1733211830134/work
-importlib_metadata @ file:///home/conda/feedstock_root/build_artifacts/importlib-metadata_1737420181517/work
+idna
+importlib_metadata 
 incremental==24.7.2
 inflection==0.5.1
-Jinja2 @ file:///home/conda/feedstock_root/build_artifacts/jinja2_1741263328855/work
-joblib @ file:///home/conda/feedstock_root/build_artifacts/joblib_1748019130050/work
-MarkupSafe @ file:///D:/bld/markupsafe_1733219614059/work
+Jinja2 
+joblib 
+MarkupSafe 
 mkl-service==2.4.1
-mpmath @ file:///home/conda/feedstock_root/build_artifacts/mpmath_1733302684489/work
+mpmath 
 msgpack==1.1.0
-multidict @ file:///D:/bld/multidict_1747722369820/work
-multiprocess @ file:///D:/bld/multiprocess_1695458970146/work
-networkx @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_networkx_1731521053/work
-numpy @ file:///D:/bld/numpy_1747544598377/work/dist/numpy-2.2.6-cp311-cp311-win_amd64.whl#sha256=25e74f9fc5d96572a55bd862a27d842458bd6d3b8d7a612e6bb03bc3f1fd084d
+multidict 
+multiprocess
+networkx 
+numpy 
 oauthlib==3.2.2
-opentelemetry-api @ file:///home/conda/feedstock_root/build_artifacts/opentelemetry-api_1747447437736/work
+opentelemetry-api 
 packaging==24.2
-pandas @ file:///D:/bld/pandas_1744430491874/work
-pillow @ file:///C:/b/abs_68t826txdy/croot/pillow_1744613085333/work
-propcache @ file:///D:/bld/propcache_1744524926447/work
+pandas 
+pillow 
+propcache
 psycopg2==2.9.10
-pyarrow @ file:///C:/b/abs_0aneze9pgl/croot/pyarrow_1738229440651/work/python
+pyarrow 
 pyasn1==0.6.1
 pyasn1_modules==0.4.1
-pycparser @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pycparser_1733195786/work
+pycparser 
 PyJWT==2.10.1
 pyOpenSSL==25.0.0
 pyparsing==3.2.1
-PySocks @ file:///D:/bld/pysocks_1733217287171/work
-python-dateutil @ file:///home/conda/feedstock_root/build_artifacts/python-dateutil_1733215673016/work
+PySocks 
+python-dateutil 
 python-dotenv==1.0.1
 pytz==2024.2
-PyYAML @ file:///D:/bld/pyyaml_1737454660454/work
+PyYAML 
 redis==5.2.1
-regex @ file:///D:/bld/regex_1730952204165/work
-requests @ file:///home/conda/feedstock_root/build_artifacts/requests_1733217035951/work
+regex 
+requests 
 requests-oauthlib==2.0.0
 rsa==4.9
-safetensors @ file:///D:/bld/safetensors_1740651439698/work
-scikit-learn @ file:///D:/bld/scikit-learn_1736496780928/work/dist/scikit_learn-1.6.1-cp311-cp311-win_amd64.whl#sha256=b8f37c282c66c737a09228918d0bfcadafb9f1d4bfb1dc6289040870d453703b
-scipy @ file:///C:/bld/scipy-split_1739790799455/work/dist/scipy-1.15.2-cp311-cp311-win_amd64.whl#sha256=7d4ec4c2c958f31576b5ea44433874f567d6f5e65bfcde22e2d960ac86b80515
-sentence-transformers @ file:///home/conda/feedstock_root/build_artifacts/sentence-transformers_1744730038855/work
+safetensors
+scikit-learn 
+sentence-transformers 
 service-identity==24.2.0
-six @ file:///home/conda/feedstock_root/build_artifacts/six_1733380938961/work
+six 
 sqlparse==0.5.3
-sympy @ file:///home/conda/feedstock_root/build_artifacts/sympy_1745946057943/work
-threadpoolctl @ file:///home/conda/feedstock_root/build_artifacts/threadpoolctl_1741878222898/work
-tokenizers @ file:///D:/bld/tokenizers_1741890318553/work/bindings/python
+sympy 
+threadpoolctl 
+tokenizers 
 torch==2.5.1
-tqdm @ file:///home/conda/feedstock_root/build_artifacts/tqdm_1735661334605/work
-transformers @ file:///home/conda/feedstock_root/build_artifacts/transformers_1747930330449/work
+tqdm 
+transformers 
 Twisted==24.11.0
 txaio==23.1.1
 typing_extensions==4.13.1
@@ -99,10 +98,10 @@ tzdata==2025.1
 uritemplate==4.1.1
 urllib3==2.3.0
 whitenoise==6.9.0
-win_inet_pton @ file:///D:/bld/win_inet_pton_1733130564612/work
-wrapt @ file:///D:/bld/wrapt_1736869488076/work
-xxhash @ file:///D:/bld/python-xxhash_1740594813776/work
-yarl @ file:///D:/bld/yarl_1744972498902/work
-zipp @ file:///home/conda/feedstock_root/build_artifacts/zipp_1732827521216/work
+win_inet_pton 
+wrapt 
+xxhash 
+yarl 
+zipp 
 zope.interface==7.2
 zstandard==0.23.0

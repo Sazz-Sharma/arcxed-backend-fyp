@@ -4,31 +4,17 @@
       "subject": "English",
       "chapter_questions": [
         {
-          "chapter": "Reading Passage",
-          "questions": [
-            "Explain the difference between identifying the main idea of a reading passage and summarizing its key details.  Provide an example to illustrate your point.",
-            "How does understanding the author's purpose influence your interpretation of a reading passage? Give a specific example of how an author's purpose might shape your understanding."
-          ]
-        },
-        {
           "chapter": "Grammar",
           "questions": [
-            "Explain the difference between a restrictive and a non-restrictive clause, and how punctuation affects their meaning.",
-            "Describe the function of a participle in a sentence and provide an example of its use in creating a more concise and descriptive sentence."
-          ]
-        },
-        {
-          "chapter": "Vocabulary",
-          "questions": [
-            "Explain how understanding word roots, prefixes, and suffixes can help you decipher the meaning of unfamiliar words.",
-            "Describe the difference between denotation and connotation, and explain how understanding both is crucial for effective communication."
+            "Explain the difference between a restrictive and a non-restrictive clause, and provide an example of each illustrating how punctuation changes the meaning.",
+            "Describe the function of a participle in a sentence and give an example of a sentence where a participial phrase modifies the subject."
           ]
         },
         {
           "chapter": "Phonemes and Stress",
           "questions": [
-            "Explain how the stress pattern of a word can affect its meaning or pronunciation, providing an example of a word with multiple meanings based on stress.",
-            "Describe the role of intonation in conveying meaning in spoken English. Provide an example of how changing intonation can alter the meaning of a sentence."
+            "How does the placement of stress in a word affect its meaning or pronunciation? Give an example to illustrate your point.",
+            "Explain the concept of minimal pairs and provide two examples of minimal pairs in English, highlighting the phonemic difference."
           ]
         }
       ]
@@ -37,45 +23,10 @@
       "subject": "Maths",
       "chapter_questions": [
         {
-          "chapter": "Set and Function",
-          "questions": [
-            "Explain the concept of a function in your own words, and provide an example of a relation that is not a function.",
-            "Describe the difference between the domain and range of a function, and explain why understanding these concepts is important."
-          ]
-        },
-        {
           "chapter": "Algebra",
           "questions": [
-            "Explain the concept of solving an equation, and describe the difference between solving a linear equation and a quadratic equation.",
-            "Describe what a system of equations is and explain how you would determine if a system of equations has one solution, no solutions, or infinitely many solutions."
-          ]
-        },
-        {
-          "chapter": "Trigonometry",
-          "questions": [
-            "Explain the relationship between the sine, cosine, and tangent functions in a right-angled triangle.",
-            "Describe how trigonometric functions are used to solve problems involving angles and distances."
-          ]
-        },
-        {
-          "chapter": "Coordinate Geometry",
-          "questions": [
-            "Explain how the distance formula is used to find the distance between two points in a coordinate plane.",
-            "Describe how the equation of a line can be used to represent a linear relationship between two variables."
-          ]
-        },
-        {
-          "chapter": "Calculus",
-          "questions": [
-            "Explain the concept of a derivative in your own words, and describe its relationship to the slope of a tangent line.",
-            "Describe the concept of an integral and its relationship to the area under a curve."
-          ]
-        },
-        {
-          "chapter": "Vectors",
-          "questions": [
-            "Explain the concept of a vector and how it differs from a scalar quantity.",
-            "Describe how vectors can be added and subtracted graphically and algebraically."
+            "Explain the concept of a linear equation and describe a real-world scenario where a linear equation could be used to model a situation.",
+            "What is the difference between solving an equation and simplifying an expression?  Provide an example of each."
           ]
         }
       ]
@@ -86,36 +37,36 @@
         {
           "chapter": "Mechanics",
           "questions": [
-            "Explain Newton's three laws of motion in your own words, providing a simple example for each law.",
-            "Describe the difference between speed and velocity, and explain how acceleration is related to both."
+            "Explain Newton's First Law of Motion in your own words and give a simple example of it in action.",
+            "Describe the difference between speed and velocity.  Provide an example to illustrate the difference."
           ]
         },
         {
           "chapter": "Heat and Thermodynamics",
           "questions": [
-            "Explain the concept of heat transfer and describe the three main methods of heat transfer.",
-            "Describe the difference between heat and temperature, and explain how they are related."
+            "Explain the concept of heat transfer through conduction. Give a real-world example.",
+            "What is the difference between heat and temperature?"
           ]
         },
         {
           "chapter": "Wave and Optics",
           "questions": [
-            "Explain the difference between transverse and longitudinal waves, providing an example of each.",
-            "Describe the phenomenon of refraction and explain how it is related to the speed of light in different media."
+            "Explain the difference between reflection and refraction of light.",
+            "Describe what is meant by the term 'wave interference'."
           ]
         },
         {
           "chapter": "Electricity and Magnetism",
           "questions": [
-            "Explain the relationship between electric current, voltage, and resistance, and state Ohm's law.",
-            "Describe the relationship between electricity and magnetism, and provide an example of how they interact."
+            "Explain the relationship between electric current, voltage, and resistance.",
+            "Describe the difference between a series and parallel circuit."
           ]
         },
         {
           "chapter": "Modern Physics and Electronics",
           "questions": [
-            "Explain the concept of quantization in modern physics, and provide an example of a phenomenon that demonstrates quantization.",
-            "Describe the basic principles of semiconductor devices and their applications in electronics."
+            "Explain the concept of quantization of energy.",
+            "What is the difference between a conductor, an insulator, and a semiconductor?"
           ]
         }
       ]
@@ -126,22 +77,22 @@
         {
           "chapter": "Physical Chemistry",
           "questions": [
-            "Explain the concept of chemical equilibrium and describe the factors that can affect it.",
-            "Describe the relationship between the rate of a chemical reaction and its activation energy."
+            "Explain the concept of molarity and its significance in chemistry.",
+            "Describe what is meant by chemical equilibrium."
           ]
         },
         {
           "chapter": "Inorganic Chemistry",
           "questions": [
-            "Explain the periodic trends in atomic size and ionization energy.",
-            "Describe the different types of chemical bonding and explain how they are formed."
+            "Explain the difference between ionic and covalent bonding.",
+            "Describe the properties of alkali metals."
           ]
         },
         {
           "chapter": "Organic Chemistry",
           "questions": [
-            "Explain the concept of isomerism in organic chemistry and provide an example of two isomers.",
-            "Describe the different types of organic reactions and explain how they are classified."
+            "Explain the concept of isomerism in organic chemistry.",
+            "Describe the general properties of alkanes."
           ]
         }
       ]

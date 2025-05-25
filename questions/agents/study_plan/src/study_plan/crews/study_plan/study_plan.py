@@ -7,7 +7,7 @@ from crewai_tools import SerperDevTool
 # you can use the @before_kickoff and @after_kickoff decorators
 # https://docs.crewai.com/concepts/crews#example-crew-class-with-decorators
 gemini_llm  = LLM(
-    model="gemini/gemini-1.5-pro",
+    model="gemini/gemini-1.5-flash",
     temperature=0.1,
     api_key="AIzaSyARLOmHXWd5x8w4JE7FLtDlLsztFT6OmrA",
     )

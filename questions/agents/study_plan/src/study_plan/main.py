@@ -551,32 +551,97 @@ class EvaluateUserFlow(Flow[EvaluateUserState]):
         print("Flow: Evaluation completed", result.raw)
         self.state.evaluation = result.raw
         return self.state
+import os
+import json
 
 class GenerateQuestionFlow(Flow[GenerateQuestionState]):
     @start()
     def generate_question_task(self, current_level: list, syllabus: list = None):
         if syllabus is None:
-            syllabus = SYLLABUS # Use the hardcoded syllabus if not provided
-            
+            syllabus = SYLLABUS
+
         print("Flow: Generating questions")
-        result = (
+        
+        crew_result = (
             QuestionGenerate()
             .crew()
             .kickoff(inputs={"current_level": current_level,
                              "syllabus": syllabus})
         )
-        # Assuming the questions are in the pydantic output of the first task
-        # Adjust if your QuestionGenerate crew structures output differently
-        if result.tasks_output and hasattr(result.tasks_output[0], 'pydantic') and result.tasks_output[0].pydantic:
-            self.state.generated_questions = result.tasks_output[0].pydantic
-        else:
-            self.state.generated_questions = [] # or handle error
-            print("Warning: Could not extract Pydantic output from QuestionGenerate task.")
-            # Fallback or more specific parsing might be needed depending on actual crew output
-            # For example, if result.raw contains the questions in a parsable format:
-            # self.state.generated_questions = json.loads(result.raw) # if result.raw is JSON string
 
-        print("Flow: Questions generated", self.state.generated_questions)
+        # --- Debugging crew_result ---
+        print(f"DEBUG: Crew Kickoff Result Type: {type(crew_result)}")
+        raw_output_data = None
+        if hasattr(crew_result, 'raw') and crew_result.raw:
+            print(f"DEBUG: Crew Result Raw is available. Length: {len(crew_result.raw)}")
+            # crew_result.raw is usually a string representation of JSON
+            try:
+                raw_output_data = json.loads(crew_result.raw)
+                print(f"DEBUG: Successfully parsed crew_result.raw into JSON.")
+            except json.JSONDecodeError as e:
+                print(f"ERROR: Failed to parse crew_result.raw as JSON. Error: {e}")
+                print(f"DEBUG: Content of crew_result.raw that failed parsing: {crew_result.raw[:1000]}") # Print a sample
+        else:
+            print("WARNING: crew_result.raw is empty or not available.")
+        
+        # --- Check Pydantic output as a fallback if direct parsing of raw fails or is not preferred ---
+        # This part is kept for completeness but parsing .raw is more direct if the structure is known.
+        if not raw_output_data and hasattr(crew_result, 'pydantic_output') and crew_result.pydantic_output:
+            print(f"DEBUG: Using crew_result.pydantic_output. Type: {type(crew_result.pydantic_output)}")
+            raw_output_data = crew_result.pydantic_output # This should already be a Pydantic model or dict/list
+            # If it's a Pydantic model, you might need .dict() or to access its attributes
+            if hasattr(raw_output_data, 'dict'): # Common for Pydantic models
+                 raw_output_data = raw_output_data.dict()
+
+
+        extracted_questions_flat_list = []
+
+        if raw_output_data and isinstance(raw_output_data, dict) and "diagnostic_questions" in raw_output_data:
+            diagnostic_data = raw_output_data.get("diagnostic_questions", [])
+            if isinstance(diagnostic_data, list):
+                print(f"DEBUG: Found 'diagnostic_questions' list with {len(diagnostic_data)} subjects.")
+                for subject_data in diagnostic_data:
+                    subject_name = subject_data.get("subject")
+                    chapter_questions_list = subject_data.get("chapter_questions", [])
+                    if isinstance(chapter_questions_list, list):
+                        for chapter_data in chapter_questions_list:
+                            chapter_name = chapter_data.get("chapter")
+                            questions_text_list = chapter_data.get("questions", [])
+                            if isinstance(questions_text_list, list):
+                                for q_text in questions_text_list:
+                                    # Create a dictionary for each question that matches GeneratedQuestionDetailSerializer
+                                    question_detail = {
+                                        "subject": subject_name,
+                                        "chapter": chapter_name,
+                                        "question_text": q_text,
+                                        # --- Populate other fields for GeneratedQuestionDetailSerializer if available ---
+                                        # "question_type": "Descriptive", # Example, adjust as needed
+                                        # "difficulty": "Medium",      # Example
+                                        # "options": [],               # Example, if not MCQ
+                                        # "correct_answer": ""         # Example
+                                    }
+                                    extracted_questions_flat_list.append(question_detail)
+                            else:
+                                print(f"WARNING: 'questions' in chapter '{chapter_name}' is not a list. Skipping.")
+                    else:
+                        print(f"WARNING: 'chapter_questions' in subject '{subject_name}' is not a list. Skipping.")
+            else:
+                 print(f"WARNING: 'diagnostic_questions' key exists but its value is not a list. Data: {diagnostic_data}")
+
+        else:
+            print("WARNING: Could not find 'diagnostic_questions' in the parsed output or parsed output is not a dict.")
+            # You could add a fallback here to check crew_result.tasks_output[0].raw_output if needed
+            # and parse that, but crew_result.raw should be the final aggregated output.
+
+        self.state.generated_questions = extracted_questions_flat_list
+        print(f"Flow: Questions generated (final count in state: {len(self.state.generated_questions)})")
+        
+        if self.state.generated_questions:
+             print(f"Flow: First generated question (type): {type(self.state.generated_questions[0])}")
+             print(f"Flow: First generated question (content): {self.state.generated_questions[0]}")
+        else:
+            print("Flow: No questions were loaded into the state.")
+            
         return self.state
 
 class MakeStudyPlanFlow(Flow[MakeStudyPlanState]):
