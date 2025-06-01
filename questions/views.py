@@ -1,5 +1,4 @@
 from django.shortcuts import render
-
 from rest_framework import viewsets, status, views, generics
 from .models import *
 from .serializers import *
@@ -7,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from .permissions import IsSuperUser, IsSuperUserOrReadOnly
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -125,6 +124,7 @@ class CombinedHeroQuestionViewSet(viewsets.ModelViewSet):
     API endpoint for managing Hero Questions along with their base Question data.
 
     - POST: Creates a Hero Question and its underlying base Question in one request.
+    - POST (/bulk-create/): Creates multiple Hero Questions and their base Questions.
     - GET: Retrieves Hero Questions with full details, including nested Question,
            Topic (for HeroQuestion), and Stream objects.
     - PUT/PATCH: Updates a Hero Question and/or its underlying base Question.
@@ -211,6 +211,48 @@ class CombinedHeroQuestionViewSet(viewsets.ModelViewSet):
         # which in turn uses HeroQuestionsReadOnlySerializer.
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    
+    @action(detail=False, methods=['post'], url_path='bulk-create', url_name='heroquestion-bulk-create')
+    @swagger_auto_schema(
+        operation_summary="Bulk create Combined Hero Questions",
+        operation_description=(
+            "Creates multiple Hero Questions and their underlying base Questions simultaneously. "
+            "Provide a list of question objects in the request body. Each object should conform "
+            "to the structure expected by the single create endpoint.\n"
+            "The response will be a list of the newly created HeroQuestions, with nested objects "
+            "formatted using HeroQuestionsReadOnlySerializer."
+        ),
+        request_body=CombinedHeroQuestionCreateUpdateSerializer(many=True), # Expects a list
+        responses={
+            201: HeroQuestionsReadOnlySerializer(many=True), # Returns a list
+            400: "Validation Error: Check input data. If one item fails, the entire batch is rolled back."
+        }
+    )
+    def bulk_create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data, many=True) # Key: many=True
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            with transaction.atomic(): # Wrap in a transaction
+                self.perform_bulk_create(serializer)
+        except Exception as e:
+            # You might want to log the error `e` here
+            return Response(
+                {"detail": f"An error occurred during bulk creation: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        headers = self.get_success_headers(serializer.data)
+        # serializer.data will be a list, each item formatted by 
+        # CombinedHeroQuestionCreateUpdateSerializer's to_representation
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def perform_bulk_create(self, serializer):
+        """
+        Hook for saving a list of object instances.
+        """
+        serializer.save() # This will call serializer.child.create() for each item
+
 
     @swagger_auto_schema(
         operation_summary="Update a Combined Hero Question (PUT)",
