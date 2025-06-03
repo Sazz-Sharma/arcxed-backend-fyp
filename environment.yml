@@ -1,0 +1,7 @@
+name: venv
+channels:
+  - defaults
+dependencies:
+  - python=3.11
+  - sentence-transformers
+prefix: C:\Users\Suhani\.conda\envs\venv

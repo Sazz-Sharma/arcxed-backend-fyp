@@ -1,7 +1,7 @@
 {
-  "subject": "English Language",
-  "topic": "Vocabulary",
-  "concept": "Understanding antonyms and their relationship to given words.",
+  "subject": "Physics",
+  "topic": "Heat Transfer",
+  "concept": "Understanding the mechanisms of heat transfer: conduction, convection, and radiation.",
   "correct_answer": "C",
-  "explanation": "Benevolent means well-meaning and kind.  Malevolent is its direct opposite, signifying ill-will or wishing harm.  Therefore, 'malevolent' is the correct antonym."
+  "explanation": "Radiation is the only mode of heat transfer that can occur through a vacuum (absence of medium). Conduction and convection require a material medium for heat transfer."
 }

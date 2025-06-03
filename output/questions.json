@@ -6,15 +6,29 @@
         {
           "chapter": "Grammar",
           "questions": [
-            "Explain the difference between a restrictive and a non-restrictive clause, and provide an example of each illustrating how punctuation changes the meaning.",
-            "Describe the function of a participle in a sentence and give an example of a sentence where a participial phrase modifies the subject."
+            "Explain the difference between a restrictive and a non-restrictive clause, and provide an example of each illustrating their impact on sentence meaning.",
+            "Describe the function of a participle in a sentence and how its use can affect sentence structure and clarity. Give an example to illustrate your point."
+          ]
+        },
+        {
+          "chapter": "Reading Passage",
+          "questions": [
+            "How does the author's choice of diction and tone influence the overall message or theme of a reading passage?",
+            "Explain how identifying the main idea and supporting details in a reading passage helps in comprehending the text's central argument."
+          ]
+        },
+        {
+          "chapter": "Vocabulary",
+          "questions": [
+            "Explain how understanding word roots, prefixes, and suffixes can help in deciphering the meaning of unfamiliar words.",
+            "Discuss the importance of context clues in determining the meaning of words within a reading passage."
           ]
         },
         {
           "chapter": "Phonemes and Stress",
           "questions": [
-            "How does the placement of stress in a word affect its meaning or pronunciation? Give an example to illustrate your point.",
-            "Explain the concept of minimal pairs and provide two examples of minimal pairs in English, highlighting the phonemic difference."
+            "Explain how the stress pattern in a word can affect its meaning or pronunciation, providing examples to illustrate your point.",
+            "Describe the role of phonemes in distinguishing between words and how variations in phoneme pronunciation can lead to miscommunication."
           ]
         }
       ]
@@ -23,10 +37,45 @@
       "subject": "Maths",
       "chapter_questions": [
         {
+          "chapter": "Trigonometry",
+          "questions": [
+            "Explain the relationship between the trigonometric functions (sine, cosine, tangent) and the unit circle.  How does this relationship help in understanding their values?",
+            "Describe how trigonometric identities are used to simplify trigonometric expressions and solve trigonometric equations.  Give a simple example."
+          ]
+        },
+        {
+          "chapter": "Set and Function",
+          "questions": [
+            "Explain the difference between a function and a relation, providing examples to illustrate your explanation.",
+            "Describe the concept of domain and range of a function and how to determine them for a given function."
+          ]
+        },
+        {
           "chapter": "Algebra",
           "questions": [
-            "Explain the concept of a linear equation and describe a real-world scenario where a linear equation could be used to model a situation.",
-            "What is the difference between solving an equation and simplifying an expression?  Provide an example of each."
+            "Explain the concept of solving a system of linear equations. What are the different methods to solve them?",
+            "Describe how to factorize quadratic expressions and explain its significance in solving quadratic equations."
+          ]
+        },
+        {
+          "chapter": "Coordinate Geometry",
+          "questions": [
+            "Explain how the distance formula is used to find the distance between two points in a coordinate plane.",
+            "Describe how the equation of a line can be determined given two points or a point and a slope."
+          ]
+        },
+        {
+          "chapter": "Calculus",
+          "questions": [
+            "Explain the concept of a derivative in terms of the slope of a tangent line to a curve.",
+            "Describe the concept of an integral in terms of finding the area under a curve."
+          ]
+        },
+        {
+          "chapter": "Vectors",
+          "questions": [
+            "Explain the concept of vector addition and subtraction, both graphically and algebraically.",
+            "Describe the concept of the dot product of two vectors and its geometric interpretation."
           ]
         }
       ]
@@ -37,36 +86,36 @@
         {
           "chapter": "Mechanics",
           "questions": [
-            "Explain Newton's First Law of Motion in your own words and give a simple example of it in action.",
-            "Describe the difference between speed and velocity.  Provide an example to illustrate the difference."
+            "Explain Newton's three laws of motion and provide a simple example illustrating each law.",
+            "Describe the concept of conservation of energy and momentum in a simple collision."
           ]
         },
         {
           "chapter": "Heat and Thermodynamics",
           "questions": [
-            "Explain the concept of heat transfer through conduction. Give a real-world example.",
-            "What is the difference between heat and temperature?"
+            "Explain the difference between heat and temperature.",
+            "Describe the concept of entropy and its relation to the second law of thermodynamics."
           ]
         },
         {
           "chapter": "Wave and Optics",
           "questions": [
-            "Explain the difference between reflection and refraction of light.",
-            "Describe what is meant by the term 'wave interference'."
+            "Explain the difference between transverse and longitudinal waves, providing examples of each.",
+            "Describe the phenomenon of diffraction and interference of light waves."
           ]
         },
         {
           "chapter": "Electricity and Magnetism",
           "questions": [
-            "Explain the relationship between electric current, voltage, and resistance.",
-            "Describe the difference between a series and parallel circuit."
+            "Explain Coulomb's law and its significance in understanding electrostatic interactions.",
+            "Describe the relationship between electricity and magnetism, and how they are interconnected."
           ]
         },
         {
           "chapter": "Modern Physics and Electronics",
           "questions": [
-            "Explain the concept of quantization of energy.",
-            "What is the difference between a conductor, an insulator, and a semiconductor?"
+            "Explain the concept of quantization of energy as it relates to the photoelectric effect.",
+            "Describe the basic principles of operation of a semiconductor diode."
           ]
         }
       ]
@@ -77,22 +126,22 @@
         {
           "chapter": "Physical Chemistry",
           "questions": [
-            "Explain the concept of molarity and its significance in chemistry.",
-            "Describe what is meant by chemical equilibrium."
+            "Explain the concept of chemical equilibrium and Le Chatelier's principle.",
+            "Describe the relationship between Gibbs Free Energy and spontaneity of a chemical reaction."
           ]
         },
         {
           "chapter": "Inorganic Chemistry",
           "questions": [
-            "Explain the difference between ionic and covalent bonding.",
-            "Describe the properties of alkali metals."
+            "Explain the periodic trends in ionization energy and electronegativity.",
+            "Describe the different types of chemical bonding (ionic, covalent, metallic)."
           ]
         },
         {
           "chapter": "Organic Chemistry",
           "questions": [
-            "Explain the concept of isomerism in organic chemistry.",
-            "Describe the general properties of alkanes."
+            "Explain the concept of isomerism in organic molecules.",
+            "Describe the different types of organic reactions (addition, substitution, elimination)."
           ]
         }
       ]
