@@ -276,3 +276,4 @@ CACHES = {
 }
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+#TEST V1
