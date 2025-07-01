@@ -1068,6 +1068,11 @@ class QuestionSimilarityAPIView(APIView):
 
 
 
+# AI service imports replaced with HTTP client
+from .ai_client import ai_client
+import asyncio
+
+# Legacy imports removed - now using separated AI service
 # try:
 #     from study_plan.main import (
 #         GenerateQuestionFlow,
@@ -1089,13 +1094,41 @@ class QuestionSimilarityAPIView(APIView):
 #     #     EvaluateUserFlow,
 #     #     SYLLABUS
 #     # )
-from study_plan.main import (
-        GenerateQuestionFlow,
-        MakeStudyPlanFlow,
-        ExplainAnswerFlow,
-        EvaluateUserFlow,
-        SYLLABUS # Import the SYLLABUS constant
-    )
+
+# Hardcoded syllabus - this should ideally come from the AI service or be configurable
+SYLLABUS = [
+    {"Subject": "English",
+     "Total_marks": 22,
+     "Number_of_questions": 18,
+     "Chapters": {
+         "Reading Passage": {"mark1": 0, "mark2": 4},
+         "Grammar": {"mark1": 10, "mark2": 0},
+         "Vocabulary": {"mark1": 4, "mark2": 0},
+         "Phonemes and Stress": {"mark1": 4, "mark2": 0}
+     }},
+    {"Subject": "Maths",
+     "Total_marks": 32,
+     "Number_of_questions": 28,
+     "Chapters": {
+         "Set and Function": {"mark1": 4, "mark2": 2},
+         "Algebra": {"mark1": 6, "mark2": 0},
+         "Trigonometry": {"mark1": 4, "mark2": 2},
+         "Coordinate Geometry": {"mark1": 4, "mark2": 2},
+         "Calculus": {"mark1": 6, "mark2": 0},
+         "Vectors": {"mark1": 6, "mark2": 0}
+     }},
+    {"Subject": "Physics",
+     "Total_marks": 32,
+     "Number_of_questions": 28,
+     "Chapters": {
+         "Mechanics": {"mark1": 8, "mark2": 2},
+         "Heat and Thermodynamics": {"mark1": 4, "mark2": 2},
+         "Optics": {"mark1": 6, "mark2": 0},
+         "Sound": {"mark1": 4, "mark2": 0},
+         "Electricity": {"mark1": 6, "mark2": 0},
+         "Modern Physics": {"mark1": 4, "mark2": 2}
+     }}
+]
 
 from .serializers import (
     GenerateQuestionRequestSerializer, GenerateQuestionResponseSerializer,
@@ -1128,15 +1161,36 @@ class GenerateQuestionsAPIView(APIView):
         serializer = GenerateQuestionRequestSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
-            flow = GenerateQuestionFlow()
-            result_state = flow.generate_question_task(
-                current_level=data['current_level'],
-                syllabus=SYLLABUS # Or data.get('syllabus', SYLLABUS) if you implement override
-            )
-            response_serializer = GenerateQuestionResponseSerializer(data=result_state.dict()) # Use .dict() for Pydantic models
-            if response_serializer.is_valid(): # Validate response serialization if complex
-                 return Response(response_serializer.data, status=status.HTTP_200_OK)
-            return Response(response_serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR) # Should not happen if Pydantic model matches serializer
+            
+            try:
+                # Call AI service asynchronously
+                result = asyncio.run(ai_client.generate_questions(
+                    current_level=data['current_level'],
+                    syllabus=SYLLABUS
+                ))
+                
+                if result.get('success', False):
+                    response_data = {
+                        'generated_questions': result.get('questions', []),
+                        'total_questions': result.get('total_questions', 0),
+                        'message': result.get('message', 'Questions generated successfully')
+                    }
+                    response_serializer = GenerateQuestionResponseSerializer(data=response_data)
+                    if response_serializer.is_valid():
+                        return Response(response_serializer.data, status=status.HTTP_200_OK)
+                    return Response(response_serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                else:
+                    return Response(
+                        {'error': 'Failed to generate questions', 'details': result}, 
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
+                    
+            except Exception as e:
+                return Response(
+                    {'error': f'AI service error: {str(e)}'}, 
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+                
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class CreateStudyPlanAPIView(APIView):
@@ -1161,16 +1215,37 @@ class CreateStudyPlanAPIView(APIView):
         serializer = CreateStudyPlanRequestSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
-            flow = MakeStudyPlanFlow()
-            result_state = flow.make_study_plan_task(
-                current_level=data['current_level'],
-                answered_questions=data['answered_questions'],
-                syllabus=SYLLABUS # Or data.get('syllabus', SYLLABUS)
-            )
-            response_serializer = CreateStudyPlanResponseSerializer(data=result_state.dict())
-            if response_serializer.is_valid():
-                return Response(response_serializer.data, status=status.HTTP_200_OK)
-            return Response(response_serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            try:
+                # Call AI service asynchronously
+                result = asyncio.run(ai_client.make_study_plan(
+                    current_level=data['current_level'],
+                    target_exam=data.get('target_exam'),
+                    available_time=data.get('available_time')
+                ))
+                
+                if result.get('success', False):
+                    response_data = {
+                        'study_plan': result.get('study_plan', []),
+                        'total_days': result.get('total_days', 0),
+                        'message': result.get('message', 'Study plan created successfully')
+                    }
+                    response_serializer = CreateStudyPlanResponseSerializer(data=response_data)
+                    if response_serializer.is_valid():
+                        return Response(response_serializer.data, status=status.HTTP_200_OK)
+                    return Response(response_serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                else:
+                    return Response(
+                        {'error': 'Failed to create study plan', 'details': result}, 
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
+                    
+            except Exception as e:
+                return Response(
+                    {'error': f'AI service error: {str(e)}'}, 
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+                
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ExplainAnswerAPIView(APIView):
@@ -1195,16 +1270,39 @@ class ExplainAnswerAPIView(APIView):
         serializer = ExplainAnswerRequestSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
-            flow = ExplainAnswerFlow()
-            result_state = flow.explain_answer_task(
-                question=data['question_text'],
-                options=data['options'],
-                correct_answer=data['correct_answer']
-            )
-            response_serializer = ExplainAnswerResponseSerializer(data=result_state.dict())
-            if response_serializer.is_valid():
-                return Response(response_serializer.data, status=status.HTTP_200_OK)
-            return Response(response_serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            try:
+                # Call AI service asynchronously
+                result = asyncio.run(ai_client.explain_answer(
+                    question=data['question_text'],
+                    options=data['options'],
+                    correct_answer=data['correct_answer'],
+                    user_answer=data.get('user_answer')
+                ))
+                
+                if result.get('success', False):
+                    response_data = {
+                        'explanation': result.get('explanation', ''),
+                        'is_correct': result.get('is_correct'),
+                        'detailed_analysis': result.get('detailed_analysis', {}),
+                        'message': result.get('message', 'Answer explanation generated successfully')
+                    }
+                    response_serializer = ExplainAnswerResponseSerializer(data=response_data)
+                    if response_serializer.is_valid():
+                        return Response(response_serializer.data, status=status.HTTP_200_OK)
+                    return Response(response_serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                else:
+                    return Response(
+                        {'error': 'Failed to explain answer', 'details': result}, 
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
+                    
+            except Exception as e:
+                return Response(
+                    {'error': f'AI service error: {str(e)}'}, 
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+                
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class EvaluateUserAPIView(APIView):
@@ -1228,13 +1326,36 @@ class EvaluateUserAPIView(APIView):
         serializer = EvaluateUserRequestSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
-            flow = EvaluateUserFlow()
-            result_state = flow.evaluate_user_task(
-                evaluation_type=data['evaluation_type'],
-                performance_data=data['performance_data']
-            )
-            response_serializer = EvaluateUserResponseSerializer(data=result_state.dict())
-            if response_serializer.is_valid():
-                return Response(response_serializer.data, status=status.HTTP_200_OK)
-            return Response(response_serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            try:
+                # Call AI service asynchronously
+                result = asyncio.run(ai_client.evaluate_user(
+                    evaluation_type=data['evaluation_type'],
+                    performance_data=data['performance_data']
+                ))
+                
+                if result.get('success', False):
+                    response_data = {
+                        'evaluation': result.get('evaluation', {}),
+                        'recommendations': result.get('recommendations', []),
+                        'strengths': result.get('strengths', []),
+                        'weaknesses': result.get('weaknesses', []),
+                        'message': result.get('message', 'User evaluation completed successfully')
+                    }
+                    response_serializer = EvaluateUserResponseSerializer(data=response_data)
+                    if response_serializer.is_valid():
+                        return Response(response_serializer.data, status=status.HTTP_200_OK)
+                    return Response(response_serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                else:
+                    return Response(
+                        {'error': 'Failed to evaluate user', 'details': result}, 
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
+                    
+            except Exception as e:
+                return Response(
+                    {'error': f'AI service error: {str(e)}'}, 
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+                
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
