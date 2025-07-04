@@ -1,0 +1,52 @@
+name: arcxed_backend_minimal
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  # Core Python
+  - python=3.11
+  
+  # Core Django packages (available via conda)
+  - django=5.1
+  - djangorestframework
+  - psycopg2
+  
+  # Database and web essentials
+  - requests
+  - python-dotenv
+  
+  # JSON and data handling
+  - pyyaml
+  
+  # Security and crypto
+  - cryptography
+  - bcrypt
+  
+  # Date/time utilities
+  - python-dateutil
+  - pytz
+  
+  # HTTP client
+  - httpx
+  
+  # Google OAuth (available via conda)
+  - google-auth
+  - google-auth-oauthlib
+  
+  # Development tools
+  - pip
+  
+  # Packages not available in conda - install via pip
+  - pip:
+    - djangorestframework-simplejwt==5.4.0
+    - django-allauth==65.3.1
+    - drf-yasg==1.21.8
+    - django-cors-headers==4.6.0
+    - django-filter==25.1
+    - whitenoise==6.9.0
+    - jsonref==1.1.0
+    - uritemplate==4.1.1
+    - inflection==0.5.1
+    - requests-oauthlib==2.0.0
+    - oauthlib==3.2.2
+    - google-auth-httplib2==0.2.0

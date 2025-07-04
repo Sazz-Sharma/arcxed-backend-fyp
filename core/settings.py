@@ -194,9 +194,6 @@ CORS_ALLOW_HEADERS = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  
     "https://ae53-111-119-49-56.ngrok-free.app",
-    "192.168.1.68:3000",  
-    "192.168.1.71:3000",
-    "192.168.1.73:3000",
 ]
 
 CORS_ALLOW_CREDENTIALS = True

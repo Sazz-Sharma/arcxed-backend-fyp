@@ -2,8 +2,6 @@
 
 import os
 import django
-import sys
-sys.path.append(r'd:\arcxed\arcxed-backend-fyp\questions\agents\study_plan\src')
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 

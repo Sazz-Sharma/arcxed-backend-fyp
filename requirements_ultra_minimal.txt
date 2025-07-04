@@ -1,0 +1,28 @@
+# Essential Django Backend Requirements
+# Core Django Framework
+Django>=5.1.0
+djangorestframework>=3.15.0
+
+# Authentication
+djangorestframework_simplejwt>=5.4.0
+
+# API Documentation
+drf-yasg>=1.21.0
+
+# Database
+psycopg2>=2.9.0
+
+# CORS for frontend communication
+django-cors-headers>=4.6.0
+
+# API filtering
+django-filter>=25.1.0
+
+# HTTP client for AI service
+httpx>=0.28.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# Static files serving
+whitenoise>=6.9.0

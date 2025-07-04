@@ -1010,7 +1010,8 @@ class TopicPerformanceStatsView(BasePerformanceStatsView):
 
 
 
-from questions.faiss_engine.question_vectorizer import _qv
+# Import the AI client for similarity search
+from .ai_client import ai_client
 
 class QuestionSimilarityInputSerializer(serializers.Serializer):
     question = serializers.CharField(help_text="Text to check for similarity")
@@ -1048,52 +1049,50 @@ class QuestionSimilarityAPIView(APIView):
 
         question_text = serializer.validated_data['question']
 
-        # Run similarity pipeline
-        raw_results = _qv.query(question_text, filter_k=50, rerank_k=5)
+        try:
+            # Call AI service for semantic search
+            result = asyncio.run(ai_client.semantic_search(
+                query=question_text,
+                top_k=5,
+                use_reranking=True
+            ))
+            
+            if result.get('success', False):
+                # Build response from AI service results
+                similar = []
+                for search_result in result.get('results', []):
+                    # Note: This is a simplified version since the AI service 
+                    # currently returns mock data. In a real implementation,
+                    # you would need to:
+                    # 1. Build a proper FAISS index in the AI service
+                    # 2. Store question IDs in the index
+                    # 3. Return actual question IDs from search
+                    
+                    # For now, return the mock structure
+                    similar.append({
+                            'question': search_result.get('text'),
+                            'score': search_result.get('score')
+    
+                    })
+                
+                return Response({'similar': similar}, status=status.HTTP_200_OK)
+            else:
+                return Response(
+                    {'error': 'Failed to perform similarity search', 'details': result}, 
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+                
+        except Exception as e:
+            return Response(
+                {'error': f'AI service error: {str(e)}'}, 
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
 
-        # Build full response items
-        similar = []
-        for qid, _, score in raw_results:
-            try:
-                question_obj = Questions.objects.get(id=qid)
-                serialized = QuestionsWithoutAnswerSerializer(question_obj)
-                similar.append({
-                    'question': serialized.data,
-                    'score': score
-                })
-            except Questions.DoesNotExist:
-                continue
-
-        return Response({'similar': similar}, status=status.HTTP_200_OK)
 
 
-
-# AI service imports replaced with HTTP client
+# AI service imports
 from .ai_client import ai_client
 import asyncio
-
-# Legacy imports removed - now using separated AI service
-# try:
-#     from study_plan.main import (
-#         GenerateQuestionFlow,
-#         MakeStudyPlanFlow,
-#         ExplainAnswerFlow,
-#         EvaluateUserFlow,
-#         SYLLABUS # Import the SYLLABUS constant
-#     )
-#     print("Successfully imported study_plan flows and SYLLABUS constant.")
-# except ImportError as e:
-#     print(e)
-#     # Fallback for local testing or if paths are set up differently, e.g. src is in PYTHONPATH
-#     # This is less robust for deployment.
-#     print(f"ImportError: {e}. Attempting alternative import assuming 'study_plan' is in PYTHONPATH.")
-#     # from study_plan.main import (
-#     #     GenerateQuestionFlow,
-#     #     MakeStudyPlanFlow,
-#     #     ExplainAnswerFlow,
-#     #     EvaluateUserFlow,
-#     #     SYLLABUS
-#     # )
 
 # Hardcoded syllabus - this should ideally come from the AI service or be configurable
 SYLLABUS = [
@@ -1248,6 +1247,63 @@ class CreateStudyPlanAPIView(APIView):
                 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# class ExplainAnswerAPIView(APIView):
+#     """
+#     Provides a detailed explanation for a specific question.
+#     Given the `question_text`, `options`, and the `correct_answer`, the AI generates
+#     an explanation to help the user understand the underlying concepts and why the
+#     answer is correct.
+#     """
+#     @swagger_auto_schema(
+#         operation_summary="Explain an Answer",
+#         operation_description="Provides an AI-generated explanation for a given question, its options, and the correct answer.",
+#         request_body=ExplainAnswerRequestSerializer,
+#         responses={
+#             200: ExplainAnswerResponseSerializer,
+#             400: "Bad Request - Invalid input data"
+#             # 404: "Not Found - If fetching question by ID and not found" (if you implement ID fetching)
+#         },
+#         tags=['Learning Tools']
+#     )
+#     def post(self, request, *args, **kwargs):
+#         serializer = ExplainAnswerRequestSerializer(data=request.data)
+#         if serializer.is_valid():
+#             data = serializer.validated_data
+            
+#             try:
+#                 # Call AI service asynchronously
+#                 result = asyncio.run(ai_client.explain_answer(
+#                     question=data['question_text'],
+#                     options=data['options'],
+#                     correct_answer=data['correct_answer'],
+#                     user_answer=data.get('user_answer')
+#                 ))
+                
+#                 if result.get('success', False):
+#                     response_data = {
+#                         'explanation': result.get('explanation', ''),
+#                         'is_correct': result.get('is_correct'),
+#                         'detailed_analysis': result.get('detailed_analysis', {}),
+#                         'message': result.get('message', 'Answer explanation generated successfully')
+#                     }
+#                     response_serializer = ExplainAnswerResponseSerializer(data=response_data)
+#                     if response_serializer.is_valid():
+#                         return Response(response_serializer.data, status=status.HTTP_200_OK)
+#                     return Response(response_serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#                 else:
+#                     return Response(
+#                         {'error': 'Failed to explain answer', 'details': result}, 
+#                         status=status.HTTP_500_INTERNAL_SERVER_ERROR
+#                     )
+                    
+#             except Exception as e:
+#                 return Response(
+#                     {'error': f'AI service error: {str(e)}'}, 
+#                     status=status.HTTP_503_SERVICE_UNAVAILABLE
+#                 )
+                
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 class ExplainAnswerAPIView(APIView):
     """
     Provides a detailed explanation for a specific question.
@@ -1262,7 +1318,6 @@ class ExplainAnswerAPIView(APIView):
         responses={
             200: ExplainAnswerResponseSerializer,
             400: "Bad Request - Invalid input data"
-            # 404: "Not Found - If fetching question by ID and not found" (if you implement ID fetching)
         },
         tags=['Learning Tools']
     )
@@ -1298,12 +1353,15 @@ class ExplainAnswerAPIView(APIView):
                     )
                     
             except Exception as e:
+                import traceback
+                traceback.print_exc()  # This will help debug the issue
                 return Response(
                     {'error': f'AI service error: {str(e)}'}, 
                     status=status.HTTP_503_SERVICE_UNAVAILABLE
                 )
                 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class EvaluateUserAPIView(APIView):
     """

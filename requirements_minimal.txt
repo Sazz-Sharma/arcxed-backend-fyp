@@ -1,0 +1,64 @@
+# Core Django Framework
+Django==5.1.5
+djangorestframework==3.15.2
+
+# Authentication & Authorization
+djangorestframework_simplejwt==5.4.0
+django-allauth==65.3.1
+
+# API Documentation
+drf-yasg==1.21.8
+
+# Database
+psycopg2==2.9.10
+
+# CORS handling for frontend
+django-cors-headers==4.6.0
+
+# Filtering support for APIs
+django-filter==25.1
+
+# HTTP client for AI service communication
+httpx==0.28.1
+
+# Environment variables
+python-dotenv==1.0.1
+
+# Static files in production
+whitenoise==6.9.0
+
+# Date/time utilities
+python-dateutil==2.9.0.post0
+pytz==2024.2
+
+# JSON handling
+jsonref==1.1.0
+
+# Password hashing
+bcrypt==4.3.0
+
+# Security
+cryptography==44.0.0
+
+# Required by Django/DRF
+sqlparse==0.5.3
+tzdata==2025.1
+asgiref==3.8.1
+
+# Required by drf-yasg
+uritemplate==4.1.1
+packaging==24.2
+PyYAML==6.0.2
+inflection==0.5.1
+
+# Required by django-allauth
+requests==2.32.3
+requests-oauthlib==2.0.0
+oauthlib==3.2.2
+PyJWT==2.10.1
+
+# Required by various packages
+certifi==2024.12.14
+charset-normalizer==3.4.1
+idna==3.10
+urllib3==2.3.0
